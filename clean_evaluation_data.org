@@ -1,0 +1,468 @@
+#+TITLE: Cleaning evaluation data
+#+AUTHOR: Vera Neplenbroek
+#+DATE: Friday, 05 February 2021
+#+PROPERTY: header-args :exports both :session clean_eval_data :cache :results value
+
+* Introduction
+The ASR error injection pipeline writes a message to indicate a
+failure when it cannot inject (the required number) of errors into the
+input sentence. Since this happens to a very small number of
+sentences, the remaining asr data will still be useful for training
+and evaluating an intent classification model. First I need to remove
+the failed sentences from the asr data, the labels and also from the
+reference data, since the asr and ref data need to be aligned to each
+other and the labels.
+
+* Data cleaning function
+  #+begin_src python
+def clean_data(
+    text_seq_asr,
+    text_seq_ref,
+    phon_seq_asr,
+    phon_seq_ref,
+    label,
+    failure_str="FFFAILED SSSENTENCE",
+):
+    """ Function that takes in two lists of strings that have the asr and ref
+    data in text form, two that have a list of strings with the asr and ref data
+    in phoneme form, a list with the labels and a string that indicates the
+    failure message, and outputs the data without failed sentences."""
+    ind_failures = [
+        i for i in range(len(text_seq_asr)) if text_seq_asr[i] == failure_str
+    ]
+    text_seq_asr = [
+        ele for ind, ele in enumerate(text_seq_asr) if ind not in ind_failures
+    ]
+    phon_seq_asr = [
+        ele for ind, ele in enumerate(phon_seq_asr) if ind not in ind_failures
+    ]
+    text_seq_ref = [
+        ele for ind, ele in enumerate(text_seq_ref) if ind not in ind_failures
+    ]
+    phon_seq_ref = [
+        ele for ind, ele in enumerate(phon_seq_ref) if ind not in ind_failures
+    ]
+    label = [ele for ind, ele in enumerate(label) if ind not in ind_failures]
+    return text_seq_asr, text_seq_ref, phon_seq_asr, phon_seq_ref, label
+  #+end_src
+
+* ATIS
+** Training set
+First I load in all the data that might change if there are failed
+sentences in the asr sentences:
+
+  #+begin_src python
+with open("data/atis/train/seq_asr.in", "r") as infile:
+    atis_train_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/train/seq_ref.in", "r") as infile:
+    atis_train_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/train/seq_asr_in.phon", "r") as infile:
+    atis_train_asr_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/train/seq_ref_in.phon", "r") as infile:
+    atis_train_ref_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/train/label", "r") as infile:
+    atis_train_label = [i.strip() for i in infile.readlines()]
+
+len(atis_train_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 4478
+
+Now we can use the data cleaning function to get clean versions of the
+data.
+
+  #+begin_src python
+(
+    atis_train_asr,
+    atis_train_ref,
+    atis_train_asr_phon,
+    atis_train_ref_phon,
+    atis_train_label,
+) = clean_data(
+    atis_train_asr,
+    atis_train_ref,
+    atis_train_asr_phon,
+    atis_train_ref_phon,
+    atis_train_label,
+)
+
+len(atis_train_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 4379
+
+And indeed 99 lines were removed from the data. Now I write the clean
+data back to the file.
+
+  #+begin_src python
+with open("data/atis/train/seq_asr.in", "w") as outfile:
+    outfile.writelines(atis_train_asr)
+
+with open("data/atis/train/seq_ref.in", "w") as outfile:
+    outfile.writelines(atis_train_ref)
+
+with open("data/atis/train/seq_asr_in.phon", "w") as outfile:
+    outfile.writelines(atis_train_asr_phon)
+
+with open("data/atis/train/seq_ref_in.phon", "w") as outfile:
+    outfile.writelines(atis_train_ref_phon)
+
+with open("data/atis/train/label", "w") as outfile:
+    outfile.writelines(atis_train_label)
+  #+end_src
+
+** Testing set
+First I load in all the data that might change if there are failed
+sentences in the asr sentences:
+
+  #+begin_src python
+with open("data/atis/test/seq_asr.in", "r") as infile:
+    atis_test_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/test/seq_ref.in", "r") as infile:
+    atis_test_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/test/seq_asr_in.phon", "r") as infile:
+    atis_test_asr_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/test/seq_ref_in.phon", "r") as infile:
+    atis_test_ref_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/test/label", "r") as infile:
+    atis_test_label = [i.strip() for i in infile.readlines()]
+
+len(atis_test_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 893
+
+Now we can use the data cleaning function to get clean versions of the
+data.
+
+  #+begin_src python
+(
+    atis_test_asr,
+    atis_test_ref,
+    atis_test_asr_phon,
+    atis_test_ref_phon,
+    atis_test_label,
+) = clean_data(
+    atis_test_asr,
+    atis_test_ref,
+    atis_test_asr_phon,
+    atis_test_ref_phon,
+    atis_test_label,
+)
+
+len(atis_test_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 852
+
+And indeed 41 lines were removed from the data. Now I write the clean
+data back to the file.
+
+  #+begin_src python
+with open("data/atis/test/seq_asr.in", "w") as outfile:
+    outfile.writelines(atis_test_asr)
+
+with open("data/atis/test/seq_ref.in", "w") as outfile:
+    outfile.writelines(atis_test_ref)
+
+with open("data/atis/test/seq_asr_in.phon", "w") as outfile:
+    outfile.writelines(atis_test_asr_phon)
+
+with open("data/atis/test/seq_ref_in.phon", "w") as outfile:
+    outfile.writelines(atis_test_ref_phon)
+
+with open("data/atis/test/label", "w") as outfile:
+    outfile.writelines(atis_test_label)
+  #+end_src
+
+** Validation set
+First I load in all the data that might change if there are failed
+sentences in the asr sentences:
+
+  #+begin_src python
+with open("data/atis/valid/seq_asr.in", "r") as infile:
+    atis_valid_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/valid/seq_ref.in", "r") as infile:
+    atis_valid_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/valid/seq_asr_in.phon", "r") as infile:
+    atis_valid_asr_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/valid/seq_ref_in.phon", "r") as infile:
+    atis_valid_ref_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/valid/label", "r") as infile:
+    atis_valid_label = [i.strip() for i in infile.readlines()]
+
+len(atis_valid_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 500
+
+Now we can use the data cleaning function to get clean versions of the
+data.
+
+  #+begin_src python
+(
+    atis_valid_asr,
+    atis_valid_ref,
+    atis_valid_asr_phon,
+    atis_valid_ref_phon,
+    atis_valid_label,
+) = clean_data(
+    atis_valid_asr,
+    atis_valid_ref,
+    atis_valid_asr_phon,
+    atis_valid_ref_phon,
+    atis_valid_label,
+)
+
+len(atis_valid_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 487
+
+And indeed 13 lines were removed from the data. Now I write the clean
+data back to the file.
+
+  #+begin_src python
+with open("data/atis/valid/seq_asr.in", "w") as outfile:
+    outfile.writelines(atis_valid_asr)
+
+with open("data/atis/valid/seq_ref.in", "w") as outfile:
+    outfile.writelines(atis_valid_ref)
+
+with open("data/atis/valid/seq_asr_in.phon", "w") as outfile:
+    outfile.writelines(atis_valid_asr_phon)
+
+with open("data/atis/valid/seq_ref_in.phon", "w") as outfile:
+    outfile.writelines(atis_valid_ref_phon)
+
+with open("data/atis/valid/label", "w") as outfile:
+    outfile.writelines(atis_valid_label)
+  #+end_src
+* SNIPS
+** Training set
+First I load in all the data that might change if there are failed
+sentences in the asr sentences:
+
+  #+begin_src python
+with open("data/snips/train/seq_asr.in", "r") as infile:
+    snips_train_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/train/seq_ref.in", "r") as infile:
+    snips_train_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/train/seq_asr_in.phon", "r") as infile:
+    snips_train_asr_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/train/seq_ref_in.phon", "r") as infile:
+    snips_train_ref_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/train/label", "r") as infile:
+    snips_train_label = [i.strip() for i in infile.readlines()]
+
+len(snips_train_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 13084
+
+Now we can use the data cleaning function to get clean versions of the
+data.
+
+  #+begin_src python
+(
+    snips_train_asr,
+    snips_train_ref,
+    snips_train_asr_phon,
+    snips_train_ref_phon,
+    snips_train_label,
+) = clean_data(
+    snips_train_asr,
+    snips_train_ref,
+    snips_train_asr_phon,
+    snips_train_ref_phon,
+    snips_train_label,
+)
+
+len(snips_train_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 12654
+
+And indeed 430 lines were removed from the data. Now I write the clean
+data back to the file.
+
+  #+begin_src python
+with open("data/snips/train/seq_asr.in", "w") as outfile:
+    outfile.writelines(snips_train_asr)
+
+with open("data/snips/train/seq_ref.in", "w") as outfile:
+    outfile.writelines(snips_train_ref)
+
+with open("data/snips/train/seq_asr_in.phon", "w") as outfile:
+    outfile.writelines(snips_train_asr_phon)
+
+with open("data/snips/train/seq_ref_in.phon", "w") as outfile:
+    outfile.writelines(snips_train_ref_phon)
+
+with open("data/snips/train/label", "w") as outfile:
+    outfile.writelines(snips_train_label)
+  #+end_src
+
+** Testing set
+First I load in all the data that might change if there are failed
+sentences in the asr sentences:
+
+  #+begin_src python
+with open("data/snips/test/seq_asr.in", "r") as infile:
+    snips_test_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/test/seq_ref.in", "r") as infile:
+    snips_test_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/test/seq_asr_in.phon", "r") as infile:
+    snips_test_asr_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/test/seq_ref_in.phon", "r") as infile:
+    snips_test_ref_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/test/label", "r") as infile:
+    snips_test_label = [i.strip() for i in infile.readlines()]
+
+len(snips_test_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 700
+
+Now we can use the data cleaning function to get clean versions of the
+data.
+
+  #+begin_src python
+(
+    snips_test_asr,
+    snips_test_ref,
+    snips_test_asr_phon,
+    snips_test_ref_phon,
+    snips_test_label,
+) = clean_data(
+    snips_test_asr,
+    snips_test_ref,
+    snips_test_asr_phon,
+    snips_test_ref_phon,
+    snips_test_label,
+)
+
+len(snips_test_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 673
+
+And indeed 27 lines were removed from the data. Now I write the clean
+data back to the file.
+
+  #+begin_src python
+with open("data/snips/test/seq_asr.in", "w") as outfile:
+    outfile.writelines(snips_test_asr)
+
+with open("data/snips/test/seq_ref.in", "w") as outfile:
+    outfile.writelines(snips_test_ref)
+
+with open("data/snips/test/seq_asr_in.phon", "w") as outfile:
+    outfile.writelines(snips_test_asr_phon)
+
+with open("data/snips/test/seq_ref_in.phon", "w") as outfile:
+    outfile.writelines(snips_test_ref_phon)
+
+with open("data/snips/test/label", "w") as outfile:
+    outfile.writelines(snips_test_label)
+  #+end_src
+
+** Validation set
+First I load in all the data that might change if there are failed
+sentences in the asr sentences:
+
+  #+begin_src python
+with open("data/snips/valid/seq_asr.in", "r") as infile:
+    snips_valid_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/valid/seq_ref.in", "r") as infile:
+    snips_valid_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/valid/seq_asr_in.phon", "r") as infile:
+    snips_valid_asr_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/valid/seq_ref_in.phon", "r") as infile:
+    snips_valid_ref_phon = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/valid/label", "r") as infile:
+    snips_valid_label = [i.strip() for i in infile.readlines()]
+
+len(snips_valid_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 700
+
+Now we can use the data cleaning function to get clean versions of the
+data.
+
+  #+begin_src python
+(
+    snips_valid_asr,
+    snips_valid_ref,
+    snips_valid_asr_phon,
+    snips_valid_ref_phon,
+    snips_valid_label,
+) = clean_data(
+    snips_valid_asr,
+    snips_valid_ref,
+    snips_valid_asr_phon,
+    snips_valid_ref_phon,
+    snips_valid_label,
+)
+
+len(snips_valid_asr)
+  #+end_src
+
+  #+RESULTS:
+  : 681
+
+And indeed 19 lines were removed from the data. Now I write the clean
+data back to the file.
+
+  #+begin_src python
+with open("data/snips/valid/seq_asr.in", "w") as outfile:
+    outfile.writelines(snips_valid_asr)
+
+with open("data/snips/valid/seq_ref.in", "w") as outfile:
+    outfile.writelines(snips_valid_ref)
+
+with open("data/snips/valid/seq_asr_in.phon", "w") as outfile:
+    outfile.writelines(snips_valid_asr_phon)
+
+with open("data/snips/valid/seq_ref_in.phon", "w") as outfile:
+    outfile.writelines(snips_valid_ref_phon)
+
+with open("data/snips/valid/label", "w") as outfile:
+    outfile.writelines(snips_valid_label)
+  #+end_src

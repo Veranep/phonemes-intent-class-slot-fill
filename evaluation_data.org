@@ -1,0 +1,337 @@
+#+TITLE: Exploring evaluation data
+#+AUTHOR: Vera Neplenbroek
+#+DATE: Tuesday, 02 February 2021
+#+PROPERTY: header-args :exports both :session evaluation_data :cache :results value
+
+* ATIS
+Airline Travel Information Systems.
+
+First I created ASR errors in the text sequences:
+
+  #+begin_src bash
+python main.py --file ../phonemes-intent-class/data/atis/train/seq.in --level 2
+  #+end_src
+
+The level stands for the amount of noise added by the ASR error injection pipeline.
+
+  #+begin_src bash
+phonemize seq.in -o seq_in.phon -l en-us -b festival -w ' ' -p '|'
+  #+end_src
+
+This example is for the reference data, but I did the same for the ASR
+data as well, for the train, test and validation sets. I make sure the
+language is US English, since that is the only language the backend
+Festival can work with. Finally I specify the word seperator, I chose
+to use a space, and the phoneme seperator, which is a |.
+
+Now let's have a look at the text itself, the results of the error
+injection pipeline and the phonemized versions:
+
+** Training set
+#+begin_src python
+with open("data/atis/train/seq_ref.in", "r") as infile:
+    atis_train_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/train/label", "r") as infile:
+    atis_train_label = [i.strip() for i in infile.readlines()]
+
+(atis_train_ref[0], atis_train_label[0])
+#+end_src
+
+#+RESULTS:
+| i want to fly from baltimore to dallas round trip | atis_flight |
+
+#+begin_src python
+with open("data/atis/train/seq_ref_in.phon", "r") as infile:
+    atis_train_ref_phon = [i.strip() for i in infile.readlines()]
+
+atis_train_ref_phon[0]
+#+end_src
+
+#+RESULTS:
+: ay| w|aa|n|t| t|ax| f|l|ay| f|r|ah|m| b|ao|l|t|ax|m|ao|r| t|ax| d|ae|l|ax|s| r|aw|n|d| t|r|ih|p|
+
+#+begin_src python
+with open("data/atis/train/seq_asr.in", "r") as infile:
+    atis_train_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/train/label", "r") as infile:
+    atis_train_label = [i.strip() for i in infile.readlines()]
+
+(atis_train_asr[0], atis_train_label[0])
+#+end_src
+
+#+RESULTS:
+| i went to fly from baltimore to dallas round trip | atis_flight |
+
+#+begin_src python
+with open("data/atis/train/seq_asr_in.phon", "r") as infile:
+    atis_train_asr_phon = [i.strip() for i in infile.readlines()]
+
+atis_train_asr_phon[0]
+#+end_src
+
+#+RESULTS:
+: ay| w|eh|n|t| t|ax| f|l|ay| f|r|ah|m| b|ao|l|t|ax|m|ao|r| t|ax| d|ae|l|ax|s| r|aw|n|d| t|r|ih|p|
+
+** Testing set
+#+begin_src python
+with open("data/atis/test/seq_ref.in", "r") as infile:
+    atis_test_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/test/label", "r") as infile:
+    atis_test_label = [i.strip() for i in infile.readlines()]
+
+(atis_test_ref[0], atis_test_label[0])
+#+end_src
+
+#+RESULTS:
+| i would like to find a flight from charlotte to las vegas that makes a stop in st. louis | atis_flight |
+
+#+begin_src python
+with open("data/atis/test/seq_ref_in.phon", "r") as infile:
+    atis_test_ref_phon = [i.strip() for i in infile.readlines()]
+
+atis_test_ref_phon[0]
+#+end_src
+
+#+RESULTS:
+: ay| w|uh|d| l|ay|k| t|ax| f|ay|n|d| ax| f|l|ay|t| f|r|ah|m| sh|aa|r|l|ax|t| t|ax| l|aa|s| v|ey|g|ax|s| dh|ae|t| m|ey|k|s| ax| s|t|aa|p| ih|n| s|t|r|iy|t| l|uw|ax|s|
+
+#+begin_src python
+with open("data/atis/test/seq_asr.in", "r") as infile:
+    atis_test_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/test/label", "r") as infile:
+    atis_test_label = [i.strip() for i in infile.readlines()]
+
+(atis_test_asr[0], atis_test_label[0])
+#+end_src
+
+#+RESULTS:
+| i would like to find a flight from charlotte to solid vegas that makes a stops in st. louis | atis_flight |
+
+#+begin_src python
+with open("data/atis/test/seq_asr_in.phon", "r") as infile:
+    atis_test_asr_phon = [i.strip() for i in infile.readlines()]
+
+atis_test_asr_phon[0]
+#+end_src
+
+#+RESULTS:
+: ay| w|uh|d| l|ay|k| t|ax| f|ay|n|d| ax| f|l|ay|t| f|r|ah|m| sh|aa|r|l|ax|t| t|ax| s|aa|l|ax|d| v|ey|g|ax|s| dh|ae|t| m|ey|k|s| ax| s|t|aa|p|s| ih|n| s|t|r|iy|t| l|uw|ax|s|
+
+** Validation set
+#+begin_src python
+with open("data/atis/valid/seq_ref.in", "r") as infile:
+    atis_valid_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/valid/label", "r") as infile:
+    atis_valid_label = [i.strip() for i in infile.readlines()]
+
+(atis_valid_ref[0], atis_valid_label[0])
+#+end_src
+
+#+RESULTS:
+| i want to fly from boston at 838 am and arrive in denver at 1110 in the morning | atis_flight |
+
+#+begin_src python
+with open("data/atis/valid/seq_ref_in.phon", "r") as infile:
+    atis_valid_ref_phon = [i.strip() for i in infile.readlines()]
+
+atis_valid_ref_phon[0]
+#+end_src
+
+#+RESULTS:
+: ay| w|aa|n|t| t|ax| f|l|ay| f|r|ah|m| b|aa|s|t|ax|n| ae|t| ey|t| hh|ah|n|d|r|ax|d| th|er|d|iy| ey|t| ae|m| ae|n|d| er|ay|v| ih|n| d|eh|n|v|er| ae|t| w|ah|n| th|aw|z|ax|n|d| w|ah|n| hh|ah|n|d|r|ax|d| t|eh|n| ih|n| dh|ax| m|ao|r|n|ax|ng|
+
+#+begin_src python
+with open("data/atis/valid/seq_asr.in", "r") as infile:
+    atis_valid_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/atis/valid/label", "r") as infile:
+    atis_valid_label = [i.strip() for i in infile.readlines()]
+
+(atis_valid_asr[0], atis_valid_label[0])
+#+end_src
+
+#+RESULTS:
+| i want to fly from boston at 838 am and arise in lever at 1110 in the morning | atis_flight |
+
+#+begin_src python
+with open("data/atis/valid/seq_asr_in.phon", "r") as infile:
+    atis_valid_asr_phon = [i.strip() for i in infile.readlines()]
+
+atis_valid_asr_phon[0]
+#+end_src
+
+#+RESULTS:
+: ay| w|aa|n|t| t|ax| f|l|ay| f|r|ah|m| b|aa|s|t|ax|n| ae|t| ey|t| hh|ah|n|d|r|ax|d| th|er|d|iy| ey|t| ae|m| ae|n|d| er|ay|z| ih|n| l|eh|v|er| ae|t| w|ah|n| th|aw|z|ax|n|d| w|ah|n| hh|ah|n|d|r|ax|d| t|eh|n| ih|n| dh|ax| m|ao|r|n|ax|ng|
+
+* SNIPS
+A crowdsourced dataset by Snips of common day-to-day user commands.
+
+First I created ASR errors in the text sequences:
+
+  #+begin_src bash
+python main.py --file ../phonemes-intent-class/data/snips/train/seq.in --level 2
+  #+end_src
+
+The level stands for the amount of noise added by the ASR error injection pipeline.
+
+  #+begin_src bash
+phonemize seq.in -o seq_in.phon -l en-us -b festival -w ' ' -p '|'
+  #+end_src
+
+This example is for the reference data, but I did the same for the ASR
+data as well, for the train, test and validation sets. I make sure the
+language is US English, since that is the only language the backend
+Festival can work with. Finally I specify the word seperator, I chose
+to use a space, and the phoneme seperator, which is a |.
+
+Now let's have a look at the text itself, the results of the error
+injection pipeline and the phonemized versions:
+
+** Training set
+#+begin_src python
+with open("data/snips/train/seq_ref.in", "r") as infile:
+    snips_train_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/train/label", "r") as infile:
+    snips_train_label = [i.strip() for i in infile.readlines()]
+
+(snips_train_ref[0], snips_train_label[0])
+#+end_src
+
+#+RESULTS:
+| listen to westbam alumb allergic on google music | PlayMusic |
+
+#+begin_src python
+with open("data/snips/train/seq_ref_in.phon", "r") as infile:
+    snips_train_ref_phon = [i.strip() for i in infile.readlines()]
+
+snips_train_ref_phon[0]
+#+end_src
+
+#+RESULTS:
+: l|ih|s|ax|n| t|ax| w|eh|s|t|b|ax|m| ax|l|ah|m| ax|l|er|jh|ax|k| ax|n| g|uw|g|ax|l| m|y|uw|z|ax|k|
+
+#+begin_src python
+with open("data/snips/train/seq_asr.in", "r") as infile:
+    snips_train_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/train/label", "r") as infile:
+    snips_train_label = [i.strip() for i in infile.readlines()]
+
+(snips_train_asr[0], snips_train_label[0])
+#+end_src
+
+#+RESULTS:
+| lessen to westbam alumb journalistic on google music | PlayMusic |
+
+#+begin_src python
+with open("data/snips/train/seq_asr_in.phon", "r") as infile:
+    snips_train_asr_phon = [i.strip() for i in infile.readlines()]
+
+snips_train_asr_phon[0]
+#+end_src
+
+#+RESULTS:
+: l|eh|s|ax|n| t|ax| w|eh|s|t|b|ax|m| ax|l|ah|m| jh|er|n|ax|l|ih|s|t|ax|k| ax|n| g|uw|g|ax|l| m|y|uw|z|ax|k|
+
+** Testing set
+#+begin_src python
+with open("data/snips/test/seq_ref.in", "r") as infile:
+    snips_test_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/test/label", "r") as infile:
+    snips_test_label = [i.strip() for i in infile.readlines()]
+
+(snips_test_ref[0], snips_test_label[0])
+#+end_src
+
+#+RESULTS:
+| add sabrina salerno to the grime instrumentals playlist | AddToPlaylist |
+
+#+begin_src python
+with open("data/snips/test/seq_ref_in.phon", "r") as infile:
+    snips_test_ref_phon = [i.strip() for i in infile.readlines()]
+
+snips_test_ref_phon[0]
+#+end_src
+
+#+RESULTS:
+: ae|d| s|ax|b|r|iy|n|ax| s|ax|l|eh|r|n|ow| t|ax| dh|ax| g|r|ay|m| ih|n|s|t|r|ax|m|eh|n|t|ax|l|z| p|l|ey|l|ax|s|t|
+
+These are the kind of lines that need to be removed (with their
+corresponding labels):
+
+#+begin_src python
+with open("data/snips/test/seq_asr.in", "r") as infile:
+    snips_test_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/test/label", "r") as infile:
+    snips_test_label = [i.strip() for i in infile.readlines()]
+
+(snips_test_asr[0], snips_test_label[0])
+#+end_src
+
+#+RESULTS:
+| FFFAILED SSSENTENCE | AddToPlaylist |
+
+#+begin_src python
+with open("data/snips/test/seq_asr_in.phon", "r") as infile:
+    snips_test_asr_phon = [i.strip() for i in infile.readlines()]
+
+snips_test_asr_phon[0]
+#+end_src
+
+#+RESULTS:
+: f|ey|l|d| s|eh|n|t|ax|n|s|
+
+** Validation set
+#+begin_src python
+with open("data/snips/valid/seq_ref.in", "r") as infile:
+    snips_valid_ref = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/valid/label", "r") as infile:
+    snips_valid_label = [i.strip() for i in infile.readlines()]
+
+(snips_valid_ref[0], snips_valid_label[0])
+#+end_src
+
+#+RESULTS:
+| i d like to have this track onto my classical relaxations playlist | AddToPlaylist |
+
+#+begin_src python
+with open("data/snips/valid/seq_ref_in.phon", "r") as infile:
+    snips_valid_ref_phon = [i.strip() for i in infile.readlines()]
+
+snips_valid_ref_phon[0]
+#+end_src
+
+#+RESULTS:
+: ay| d|iy| l|ay|k| t|ax| hh|ae|v| dh|ax|s| t|r|ae|k| aa|n|t|uw| m|ay| k|l|ae|s|ax|k|ax|l| r|ih|l|ax|k|s|ey|sh|ax|n|z| p|l|ey|l|ax|s|t|
+
+#+begin_src python
+with open("data/snips/valid/seq_asr.in", "r") as infile:
+    snips_valid_asr = [i.strip() for i in infile.readlines()]
+
+with open("data/snips/valid/label", "r") as infile:
+    snips_valid_label = [i.strip() for i in infile.readlines()]
+
+(snips_valid_asr[0], snips_valid_label[0])
+#+end_src
+
+#+RESULTS:
+| i d like to having this trap onto my classical relaxations playlist | AddToPlaylist |
+
+#+begin_src python
+with open("data/snips/valid/seq_asr_in.phon", "r") as infile:
+    snips_valid_asr_phon = [i.strip() for i in infile.readlines()]
+
+snips_valid_asr_phon[0]
+#+end_src
+
+#+RESULTS:
+: ay| d|iy| l|ay|k| t|ax| hh|ae|v|ih|ng| dh|ax|s| t|r|ae|p| aa|n|t|uw| m|ay| k|l|ae|s|ax|k|ax|l| r|ih|l|ax|k|s|ey|sh|ax|n|z| p|l|ey|l|ax|s|t|

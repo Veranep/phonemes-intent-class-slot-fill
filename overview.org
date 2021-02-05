@@ -1,0 +1,90 @@
+#+TITLE: Overview of Capstone Plan
+#+AUTHOR: Vera Neplenbroek
+#+DATE: Tuesday, 02 February 2021
+
+* DONE Training data
+** DONE Convert text to phonemes using the phonemizer tool
+* DONE Evaluation data
+** DONE Download data (ATIS and SNIPS)
+** DONE Insert ASR errors using the error injection pipeline
+** DONE Convert text to phonemes using the phonemizer tool
+** DONE Remove failed sentences from text sequences, phoneme sequences and labels
+* Embeddings
+All embeddings are trained on the union of SQuAD and SUBJ datasets and
+are 20 dimensional.
+
+** p2vc_asr
+Pad words with a padding symbol. REF and ASR are seperate. context
+window = 2
+
+** p2vc_dict
+Use https://github.com/cmusphinx/cmudict to extract words with
+multiple accepted pronunciations and couple its alternative
+pronunciations as <REF, ASR> pairs. context window = 2
+
+** p2vm_asr
+Mix REF and ASR utterances (one phoneme from REF, then one phoneme
+from ASR, etc.). context window = 2
+*** Does this embedding use padding symbols?
+
+** p2vm_dict
+Use https://github.com/cmusphinx/cmudict to extract words with
+multiple accepted pronunciations and couple its alternative
+pronunciations as <REF, ASR> pairs. context window = 2
+
+** p2va_asr
+Use Needleman-Wunsch alignment algorithm. Context window = 2 from the
+other utterance.
+*** Does this embedding use padding symbols?
+
+** p2va_dict
+Use Needleman-Wunsch alignment algorithm. Context window = 2 from the
+other utterance. Use https://github.com/cmusphinx/cmudict to extract words with
+multiple accepted pronunciations and couple its alternative
+pronunciations as <REF, ASR> pairs.
+
+** p2va0_asr
+Use Needleman-Wunsch alignment algorithm. Context window = 0 from the
+other utterance.
+
+** p2va0_dict
+Use Needleman-Wunsch alignment algorithm. Context window = 0 from the
+other utterance. Use https://github.com/cmusphinx/cmudict to extract words with
+multiple accepted pronunciations and couple its alternative
+pronunciations as <REF, ASR> pairs.
+
+** s2s_asr
+Sequence to sequence model, no phoneme alignment procedure. Use LSTM
+layers in both encoder and decoder. Give REF utterances to encoder and
+ASR utterances to decoder (opposite gave similar results). Use the
+embedding layer of the decoder as pre-trained phoneme embeddings
+(encoder ones gave similar results).
+
+** s2s_dict
+Sequence to sequence model, no phoneme alignment procedure. Use LSTM
+layers in both encoder and decoder. Give REF utterances to encoder and
+ASR utterances to decoder (opposite gave similar results). Use the
+embedding layer of the decoder as pre-trained phoneme embeddings
+(encoder ones gave similar results).
+
+** Use t-SNE for visually displaying embeddings ?
+* Evaluation of embeddings
+** Use randomly initialized 20 dimensional vectors (rnd)
+** CNN vs RNN (LSTM)
+*** Adapt CNN by Kim into multi-input CNN
+*** Adapt LSTM by Kim into multi-input LSTM (might be too hard)
+** Intent classification
+*** Use word embeddings (300 dimensions) trained on Wikipedia from GloVe
+*** Phoneme embeddings are NOT trainable
+*** Use randomly initialized trainable 20-dimensional character embeddings
+*** First train LSTM and CNN on w, c and wc (train+test on REF and train+test on ASR) (12 models)
+Decide on LSTM or CNN
+*** Use pre-trained phoneme embeddings and evaluate accuracy of task
+*** Compare w with c, p, wc, wp and wcp
+* TODO Research Proposal
+** TODO Find sources
+** TODO Find and save sources for all data and tools used
+** TODO Come up with a title
+** TODO Come up with a thesis statement
+** TODO Outline research proposal
+** Start writing research proposal

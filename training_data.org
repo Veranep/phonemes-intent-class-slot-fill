@@ -1,0 +1,121 @@
+#+TITLE: Exploring training data
+#+AUTHOR: Vera Neplenbroek
+#+DATE: Tuesday, 02 February 2021
+#+PROPERTY: header-args :exports both :session training_data :cache no :results value
+
+* SQuAD
+A dataset containing approximately 150.000 crowdsourced questions
+regarding a number of Wikipedia articles. Fang et al. randomly
+selected 20 questions from each of a total of 442 Wikipedia articles.
+
+First I converted the text into phonemes using the phonemizer tool:
+
+  #+begin_src bash
+phonemize squad_samples_reference.txt -o squad_samples_reference.phon -l en-us -b festival -w ' ' -p '|'
+  #+end_src
+
+This example is for the reference data, but I did the same for the ASR
+data as well. I make sure the language is US English, since that is
+the only language the backend Festival can work with. Finally I
+specify the word seperator, I chose to use a space, and the phoneme
+seperator, which is a |.
+
+Now let's have a look at the text itself and the phonemized version:
+
+#+begin_src python
+with open("data/phoneme_embedding_training_set/squad_samples_reference.txt", "r") as infile:
+    squad_ref = [i.strip() for i in infile.readlines()]
+
+squad_ref[0]
+#+end_src
+
+#+RESULTS:
+: House of Dereon became known through Beyonce and which of Beyonce's relatives?
+
+#+begin_src python
+with open("data/phoneme_embedding_training_set/squad_samples_reference.phon", "r") as infile:
+    squad_ref_phon = [i.strip() for i in infile.readlines()]
+
+squad_ref_phon[0]
+#+end_src
+
+#+RESULTS:
+: hh|aw|s| ah|v| d|eh|r|ey|ax|n| b|ih|k|ey|m| n|ow|n| th|r|uw| b|ey|ax|n|s| ae|n|d| w|ih|ch| ah|v| b|ey|ax|n|s| ax|s| r|eh|l|ax|t|ih|v|z|
+
+#+begin_src python
+with open("data/phoneme_embedding_training_set/squad_samples_asr.txt", "r") as infile:
+    squad_asr = [i.strip() for i in infile.readlines()]
+
+squad_asr[0]
+#+end_src
+
+#+RESULTS:
+: house of dereon became known through beyonce and which of beyond say s relatives
+
+#+begin_src python
+with open("data/phoneme_embedding_training_set/squad_samples_asr.phon", "r") as infile:
+    squad_asr_phon = [i.strip() for i in infile.readlines()]
+
+squad_asr_phon[0]
+#+end_src
+
+#+RESULTS:
+: hh|aw|s| ah|v| d|eh|r|ey|ax|n| b|ih|k|ey|m| n|ow|n| th|r|uw| b|ey|ax|n|s| ae|n|d| w|ih|ch| ah|v| b|ih|aa|n|d| s|ey| eh|s| r|eh|l|ax|t|ih|v|z|
+
+* Subj
+A subjectivity dataset (10.000 sentences) from which Fang et
+al. randomly selected 5.000 sentences.
+
+First I converted the text into phonemes using the phonemizer tool:
+
+  #+begin_src bash
+phonemize subj_samples_reference.txt -o subj_samples_reference.phon -l en-us -b festival -w ' ' -p '|'
+  #+end_src
+
+This example is for the reference data, but I did the same for the ASR
+data as well. I make sure the language is US English, since that is
+the only language the backend Festival can work with. Finally I
+specify the word seperator, I chose to use a space, and the phoneme
+seperator, which is a |.
+
+Now let's have a look at the text itself and the phonemized version:
+
+#+begin_src python
+with open("data/phoneme_embedding_training_set/subj_samples_reference.txt", "r") as infile:
+    subj_ref = [i.strip() for i in infile.readlines()]
+
+subj_ref[0]
+#+end_src
+
+#+RESULTS:
+: the movie begins in the past where a young boy named sam attempts to save celebi from a hunter .
+
+#+begin_src python
+with open("data/phoneme_embedding_training_set/subj_samples_reference.phon", "r") as infile:
+    subj_ref_phon = [i.strip() for i in infile.readlines()]
+
+subj_ref_phon[0]
+#+end_src
+
+#+RESULTS:
+: dh|ax| m|uw|v|iy| b|ax|g|ih|n|z| ih|n| dh|ax| p|ae|s|t| w|eh|r| ax| y|ah|ng| b|oy| n|ey|m|d| s|ae|m| ax|t|eh|m|p|t|s| t|ax| s|ey|v| s|eh|l|ey|b|iy| f|r|ah|m| ax| hh|ah|n|t|er|
+
+#+begin_src python
+with open("data/phoneme_embedding_training_set/subj_samples_asr.txt", "r") as infile:
+    subj_asr = [i.strip() for i in infile.readlines()]
+
+subj_asr[0]
+#+end_src
+
+#+RESULTS:
+: the movie begins in the past, where a young boy named sam attempts to save celeb e! from the hunter
+
+#+begin_src python
+with open("data/phoneme_embedding_training_set/subj_samples_asr.phon", "r") as infile:
+    subj_asr_phon = [i.strip() for i in infile.readlines()]
+
+subj_asr_phon[0]
+#+end_src
+
+#+RESULTS:
+: dh|ax| m|uw|v|iy| b|ax|g|ih|n|z| ih|n| dh|ax| p|ae|s|t| w|eh|r| ax| y|ah|ng| b|oy| n|ey|m|d| s|ae|m| ax|t|eh|m|p|t|s| t|ax| s|ey|v| s|eh|l|ax|b| iy| f|r|ah|m| dh|ax| hh|ah|n|t|er|
