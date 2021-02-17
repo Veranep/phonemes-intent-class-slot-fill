@@ -1,0 +1,225 @@
+#+TITLE: Train Phoneme2Vec phoneme embeddings
+#+AUTHOR: Vera Neplenbroek
+#+DATE: Wednesday, 17 February 2021
+#+PROPERTY: header-args :exports both :session phoneme_emb :cache no :results value
+
+* Imports
+  #+begin_src python :results silent
+from gensim.models import Word2Vec
+from itertools import chain, zip_longest
+import multiprocessing
+  #+end_src
+
+* Data
+First I load in the training data in their phonemized versions:
+
+  #+begin_src python :results silent
+with open(
+    "data/phoneme_embedding_training_set/squad_samples_reference.phon", "r"
+) as infile:
+    squad_ref_phon = [i.strip() for i in infile.readlines()]
+with open("data/phoneme_embedding_training_set/squad_samples_asr.phon", "r") as infile:
+    squad_asr_phon = [i.strip() for i in infile.readlines()]
+with open(
+    "data/phoneme_embedding_training_set/subj_samples_reference.phon", "r"
+) as infile:
+    subj_ref_phon = [i.strip() for i in infile.readlines()]
+with open("data/phoneme_embedding_training_set/subj_samples_asr.phon", "r") as infile:
+    subj_asr_phon = [i.strip() for i in infile.readlines()]
+  #+end_src
+
+Now let's have a look at the reference and asr versions of the two
+datasets:
+
+  #+begin_src python
+squad_ref_phon[0]
+  #+end_src
+
+  #+RESULTS:
+  : hh|aw|s| ah|v| d|eh|r|ey|ax|n| b|ih|k|ey|m| n|ow|n| th|r|uw| b|ey|ax|n|s| ae|n|d| w|ih|ch| ah|v| b|ey|ax|n|s| ax|s| r|eh|l|ax|t|ih|v|z|
+
+  #+begin_src python
+squad_asr_phon[0]
+  #+end_src
+
+  #+RESULTS:
+  : hh|aw|s| ah|v| d|eh|r|ey|ax|n| b|ih|k|ey|m| n|ow|n| th|r|uw| b|ey|ax|n|s| ae|n|d| w|ih|ch| ah|v| b|ih|aa|n|d| s|ey| eh|s| r|eh|l|ax|t|ih|v|z|
+
+  #+begin_src python
+subj_ref_phon[0]
+  #+end_src
+
+  #+RESULTS:
+  : dh|ax| m|uw|v|iy| b|ax|g|ih|n|z| ih|n| dh|ax| p|ae|s|t| w|eh|r| ax| y|ah|ng| b|oy| n|ey|m|d| s|ae|m| ax|t|eh|m|p|t|s| t|ax| s|ey|v| s|eh|l|ey|b|iy| f|r|ah|m| ax| hh|ah|n|t|er|
+
+  #+begin_src python
+subj_asr_phon[0]
+  #+end_src
+
+  #+RESULTS:
+  : dh|ax| m|uw|v|iy| b|ax|g|ih|n|z| ih|n| dh|ax| p|ae|s|t| w|eh|r| ax| y|ah|ng| b|oy| n|ey|m|d| s|ae|m| ax|t|eh|m|p|t|s| t|ax| s|ey|v| s|eh|l|ax|b| iy| f|r|ah|m| dh|ax| hh|ah|n|t|er|
+
+Now I will add the two datasets together, since I will use a mix of
+both for training. It is important that the order of the lists within
+the lists, corresponding to sentences, stays the same.
+
+  #+begin_src python
+train_ref = squad_ref_phon + subj_ref_phon
+train_asr = squad_asr_phon + subj_asr_phon
+(len(train_ref), len(train_asr))
+  #+end_src
+
+  #+RESULTS:
+  | 14715 | 14715 |
+
+I put the padding symbol 'pad' in between two words:
+
+  #+begin_src python
+train_ref = list(map(lambda st: str.replace(st, " ", " pad "), train_ref))
+train_asr = list(map(lambda st: str.replace(st, " ", " pad "), train_asr))
+train_ref[0]
+  #+end_src
+
+  #+RESULTS:
+  : hh|aw|s| pad ah|v| pad d|eh|r|ey|ax|n| pad b|ih|k|ey|m| pad n|ow|n| pad th|r|uw| pad b|ey|ax|n|s| pad ae|n|d| pad w|ih|ch| pad ah|v| pad b|ey|ax|n|s| pad ax|s| pad r|eh|l|ax|t|ih|v|z|
+
+Since I will split the data into individual phonemes anyway and I do
+not pay any attention to the word boundaries, I replace the phoneme
+seperators by spaces:
+
+  #+begin_src python
+train_ref = list(map(lambda st: str.replace(st, "|", " "), train_ref))
+train_asr = list(map(lambda st: str.replace(st, "|", " "), train_asr))
+train_ref[0]
+  #+end_src
+
+  #+RESULTS:
+  : hh aw s  pad ah v  pad d eh r ey ax n  pad b ih k ey m  pad n ow n  pad th r uw  pad b ey ax n s  pad ae n d  pad w ih ch  pad ah v  pad b ey ax n s  pad ax s  pad r eh l ax t ih v z
+
+This means I can now split the sentences into sequences of phonemes
+and padding symbols:
+
+  #+begin_src python
+train_ref = [sentence.split() for sentence in train_ref]
+train_asr = [sentence.split() for sentence in train_asr]
+train_ref[0]
+  #+end_src
+
+  #+RESULTS:
+  | hh | aw | s | pad | ah | v | pad | d | eh | r | ey | ax | n | pad | b | ih | k | ey | m | pad | n | ow | n | pad | th | r | uw | pad | b | ey | ax | n | s | pad | ae | n | d | pad | w | ih | ch | pad | ah | v | pad | b | ey | ax | n | s | pad | ax | s | pad | r | eh | l | ax | t | ih | v | z |
+
+* p2vc
+For the first embedding I can directly train it and the reference and
+asr sets are just added together:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2vc = Word2Vec(
+    sentences=train_ref + train_asr,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2vc.similarity("ay", "oy"),
+    p2vc.similarity("ey", "ay"),
+    p2vc.similarity("uw", "aw"),
+    p2vc.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.55957735 | 0.46521547 | 0.36174682 | 0.51120037 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2vc.similarity("hh", "m"),
+    p2vc.similarity("v", "dh"),
+    p2vc.similarity("z", "th"),
+    p2vc.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.45258784 | 0.37809023 | 0.29255268 | 0.13155048 |
+
+It looks like the model gives somewhat higher scores to similar
+sounding phonemes, but the difference is not very big.
+
+* p2vm
+For this embedding I first need to create a list of lists where the
+inner lists are made up out of alternating elements (phonemes) from
+the reference and asr sentences. If one list is longer than the other,
+the 'extra' elements (phonemes) are added at the end of the mixed
+list.
+
+  #+begin_src python
+train_mixed_p2vm = [
+    list(filter(None, chain(*zip_longest(train_ref[i], train_asr[i]))))
+    for i in range(len(train_ref_p2vm))
+]
+train_mixed_p2vm[0]
+  #+end_src
+
+  #+RESULTS:
+  | hh | hh | aw | aw | s | s | pad | pad | ah | ah | v | v | pad | pad | d | d | eh | eh | r | r | ey | ey | ax | ax | n | n | pad | pad | b | b | ih | ih | k | k | ey | ey | m | m | pad | pad | n | n | ow | ow | n | n | pad | pad | th | th | r | r | uw | uw | pad | pad | b | b | ey | ey | ax | ax | n | n | s | s | pad | pad | ae | ae | n | n | d | d | pad | pad | w | w | ih | ih | ch | ch | pad | pad | ah | ah | v | v | pad | pad | b | b | ey | ih | ax | aa | n | n | s | d | pad | pad | ax | s | s | ey | pad | pad | r | eh | eh | s | l | pad | ax | r | t | eh | ih | l | v | ax | z | t | ih | v | z |
+
+Now I can train the embedding:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2vm = Word2Vec(
+    sentences=train_mixed_p2vm,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2vm.similarity("ay", "oy"),
+    p2vm.similarity("ey", "ay"),
+    p2vm.similarity("uw", "aw"),
+    p2vm.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.34946185 | 0.1289681 | 0.2947121 | 0.40417397 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2vm.similarity("hh", "m"),
+    p2vm.similarity("v", "dh"),
+    p2vm.similarity("z", "th"),
+    p2vm.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.35978293 | 0.42775154 | 0.11034348 | 0.16268623 |
+
+It looks like the model gives similar scores to similar sounding
+phonemes and dissimilar sounding phonemes. Something that surprises me
+is the very low score for "ey" and "ay", even though they are similar
+sounding phonemes.
