@@ -3,24 +3,24 @@
 #+DATE: Tuesday, 02 February 2021
 
 * Planning
-| Date of meeting | Deadline?              | Busy?  | TODO Code (ready before meeting)                     | TODO Writing (ready before meeting)                                   |
-|-----------------+------------------------+--------+------------------------------------------------------+-----------------------------------------------------------------------|
-| February 17th   | No                     | No     | Possibly start embeddings code                       | More extensive outline Research Context + write Introduction          |
-| February 24th   | No                     | Yes!   | None                                                 | Write Methodology                                                     |
-| March 3rd       | Yes, Research Proposal | No     | None                                                 | Write (Research Context + descrp. Writing Update)+ tie all loose ends |
-| March 10th      | No                     | Yes    | Work on embeddings code                              | Make structure for final paper                                        |
-| March 17th      | No                     | No     | Work on embeddings code                              | Write outline final paper + write (Introduction + Research Context)   |
-| March 24th      | No                     | No     | Finish + run embeddings code + start evaluation code | Start writing Writing Update section (about embeddings + results?)    |
-| March 31st      | Yes, Writing Update    | No     | Work on evaluation code                              | Finish writing Writing Update section (about embeddings + results?)   |
-| April 7th       | No                     | +-     | Work on evaluation code                              | Write (Methodology + Start new chapter)!                              |
-| April 14th      | No                     | Yes    | Work on evaluation code                              | Write (Finish previous Chapter + Start new chapter)!                  |
-| April 21st      | No                     | No     | Finish + run evaluation code                         | Write (More chapters)!                                                |
-| April 28th      | No                     | No     | Tie loose ends                                       | Write (Results/Findings/Discussion/Conclusion)!                       |
-| May 5th         | Yes, Final Draft       | No     | Finish Code                                          | Finish Writing                                                        |
-| May 12th        | No                     | +-     | Tie loose ends / formatting                          | Tie loose ends / formatting                                           |
-| May 19th        | No                     | No     | Implement feedback                                   | Implement feedback                                                    |
-| May 26th        | Yes, Final Thesis      | +-     | Finish Code                                          | Finish Paper                                                          |
-| June 2nd        | Yes, Presentation      | +-/Yes | None                                                 | Prepare presentation                                                  |
+| Date of meeting | Deadline?              | Busy?  | TODO Code (ready before meeting)                         | TODO Writing (ready before meeting)                                   |
+|-----------------+------------------------+--------+----------------------------------------------------------+-----------------------------------------------------------------------|
+| February 17th   | No                     | No     | Possibly start embeddings code                           | More extensive outline Research Context + write Introduction          |
+| February 24th   | No                     | Yes!   | None                                                     | Write Methodology                                                     |
+| March 3rd       | Yes, Research Proposal | No     | None                                                     | Write (Research Context + descrp. Writing Update)+ tie all loose ends |
+| March 10th      | No                     | Yes    | Work on embeddings code                                  | Make structure for final paper                                        |
+| March 17th      | No                     | No     | Work on embeddings code                                  | Write outline final paper + write (Introduction + Research Context)   |
+| March 24th      | No                     | No     | Create embeddings visualizations + start evaluation code | Start writing Writing Update section (about embeddings + results?)    |
+| March 31st      | Yes, Writing Update    | No     | Work on evaluation code                                  | Finish writing Writing Update section (about embeddings + results?)   |
+| April 7th       | No                     | +-     | Work on evaluation code                                  | Write (Methodology + Start new chapter)!                              |
+| April 14th      | No                     | Yes    | Work on evaluation code                                  | Write (Finish previous Chapter + Start new chapter)!                  |
+| April 21st      | No                     | No     | Finish + run evaluation code                             | Write (More chapters)!                                                |
+| April 28th      | No                     | No     | Tie loose ends                                           | Write (Results/Findings/Discussion/Conclusion)!                       |
+| May 5th         | Yes, Final Draft       | No     | Finish Code                                              | Finish Writing                                                        |
+| May 12th        | No                     | +-     | Tie loose ends / formatting                              | Tie loose ends / formatting                                           |
+| May 19th        | No                     | No     | Implement feedback                                       | Implement feedback                                                    |
+| May 26th        | Yes, Final Thesis      | +-     | Finish Code                                              | Finish Paper                                                          |
+| June 2nd        | Yes, Presentation      | +-/Yes | None                                                     | Prepare presentation                                                  |
 
 * DONE Training data
 ** DONE Convert text to phonemes using the phonemizer tool
