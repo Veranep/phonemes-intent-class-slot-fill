@@ -5,8 +5,13 @@
 
 * Imports
   #+begin_src python :results silent
+from collections import deque
 from gensim.models import Word2Vec
-from itertools import chain, zip_longest
+import gensim.models.word2vec
+from itertools import chain, product, zip_longest
+import pandas as pd
+from sklearn.manifold import TSNE
+import tqdm
 import multiprocessing
   #+end_src
 
@@ -109,12 +114,14 @@ train_ref[0]
   | hh | aw | s | pad | ah | v | pad | d | eh | r | ey | ax | n | pad | b | ih | k | ey | m | pad | n | ow | n | pad | th | r | uw | pad | b | ey | ax | n | s | pad | ae | n | d | pad | w | ih | ch | pad | ah | v | pad | b | ey | ax | n | s | pad | ax | s | pad | r | eh | l | ax | t | ih | v | z |
 
 * p2vc
+** Embedding
 For the first embedding I can directly train it and the reference and
 asr sets are just added together:
 
   #+begin_src python :results silent
 EMB_DIM = 20
 p2vc = Word2Vec(
+    negative=30,
     sentences=train_ref + train_asr,
     size=EMB_DIM,
     window=2,
@@ -129,35 +136,72 @@ based on intuition:
 
   #+begin_src python
 (
-    p2vc.similarity("ay", "oy"),
-    p2vc.similarity("ey", "ay"),
-    p2vc.similarity("uw", "aw"),
-    p2vc.similarity("sh", "zh"),
+    p2vc.wv.similarity("ay", "oy"),
+    p2vc.wv.similarity("ey", "ay"),
+    p2vc.wv.similarity("uw", "aw"),
+    p2vc.wv.similarity("sh", "zh"),
 )
   #+end_src
 
   #+RESULTS:
-  | 0.55957735 | 0.46521547 | 0.36174682 | 0.51120037 |
+  | 0.57645506 | 0.50118715 | 0.41623747 | 0.5245869 |
 
 These are the similarity scores for phonemes I expect to be
 dissimilar, based on intuition:
 
   #+begin_src python
 (
-    p2vc.similarity("hh", "m"),
-    p2vc.similarity("v", "dh"),
-    p2vc.similarity("z", "th"),
-    p2vc.similarity("w", "l"),
+    p2vc.wv.similarity("hh", "oy"),
+    p2vc.wv.similarity("v", "dh"),
+    p2vc.wv.similarity("z", "th"),
+    p2vc.wv.similarity("w", "l"),
 )
   #+end_src
 
   #+RESULTS:
-  | 0.45258784 | 0.37809023 | 0.29255268 | 0.13155048 |
+  | 0.25415316 | 0.49989048 | 0.3160112 | 0.31361958 |
 
 It looks like the model gives somewhat higher scores to similar
 sounding phonemes, but the difference is not very big.
 
+** Visualization
+   #+begin_src python
+phonemes = list(p2vc.wv.vocab)
+X = p2vc[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | l | t | z | aa | f | ao | er | p | sh | ng | ay | uh | y | iy | g | dh | jh | oy | zh |
+   | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |   |   |   |    |   |    |    |   |    |    |    |    |   |    |   |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 41 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2vc.png")
+   #+end_src
+
 * p2vm
+** Embedding
 For this embedding I first need to create a list of lists where the
 inner lists are made up out of alternating elements (phonemes) from
 the reference and asr sentences. If one list is longer than the other,
@@ -167,7 +211,7 @@ list.
   #+begin_src python
 train_mixed_p2vm = [
     list(filter(None, chain(*zip_longest(train_ref[i], train_asr[i]))))
-    for i in range(len(train_ref_p2vm))
+    for i in range(len(train_ref))
 ]
 train_mixed_p2vm[0]
   #+end_src
@@ -180,6 +224,7 @@ Now I can train the embedding:
   #+begin_src python :results silent
 EMB_DIM = 20
 p2vm = Word2Vec(
+    negative=20,
     sentences=train_mixed_p2vm,
     size=EMB_DIM,
     window=2,
@@ -194,32 +239,434 @@ based on intuition:
 
   #+begin_src python
 (
-    p2vm.similarity("ay", "oy"),
-    p2vm.similarity("ey", "ay"),
-    p2vm.similarity("uw", "aw"),
-    p2vm.similarity("sh", "zh"),
+    p2vm.wv.similarity("ay", "oy"),
+    p2vm.wv.similarity("ey", "ay"),
+    p2vm.wv.similarity("uw", "aw"),
+    p2vm.wv.similarity("sh", "zh"),
 )
   #+end_src
 
   #+RESULTS:
-  | 0.34946185 | 0.1289681 | 0.2947121 | 0.40417397 |
+  | 0.33760637 | 0.09110302 | 0.2775684 | 0.33138815 |
 
 These are the similarity scores for phonemes I expect to be
 dissimilar, based on intuition:
 
   #+begin_src python
 (
-    p2vm.similarity("hh", "m"),
-    p2vm.similarity("v", "dh"),
-    p2vm.similarity("z", "th"),
-    p2vm.similarity("w", "l"),
+    p2vm.wv.similarity("hh", "oy"),
+    p2vm.wv.similarity("v", "dh"),
+    p2vm.wv.similarity("z", "th"),
+    p2vm.wv.similarity("w", "l"),
 )
   #+end_src
 
   #+RESULTS:
-  | 0.35978293 | 0.42775154 | 0.11034348 | 0.16268623 |
+  | 0.14911565 | 0.52828693 | 0.1856652 | 0.26119733 |
 
 It looks like the model gives similar scores to similar sounding
 phonemes and dissimilar sounding phonemes. Something that surprises me
 is the very low score for "ey" and "ay", even though they are similar
 sounding phonemes.
+** Visualization
+   #+begin_src python
+phonemes = list(p2vm.wv.vocab)
+X = p2vm[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | aa | l | t | z | f | ao | er | p | sh | ay | ng | uh | y | dh | iy | g | jh | oy | zh |
+   | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |    |   |   |   |   |    |    |   |    |    |    |    |   |    |    |   |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 41 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2vm.png")
+   #+end_src
+
+* p2va
+** Needleman-Wunsch algorithm
+*** The algorithm
+This implementation of the Needleman-Wunsch alignment algorithm was
+written by John Lekberg and found [[https://johnlekberg.com/blog/2020-10-25-seq-align.html][here]].
+
+  #+begin_src python :results silent
+def needleman_wunsch(x, y):
+    """Run the Needleman-Wunsch algorithm on two sequences.
+
+    x, y -- sequences.
+
+    Code based on pseudocode in Section 3 of:
+
+    Naveed, Tahir; Siddiqui, Imitaz Saeed; Ahmed, Shaftab.
+    "Parallel Needleman-Wunsch Algorithm for Grid." n.d.
+    https://upload.wikimedia.org/wikipedia/en/c/c4/ParallelNeedlemanAlgorithm.pdf
+    """
+    N, M = len(x), len(y)
+    s = lambda a, b: int(a == b)
+    DIAG = -1, -1
+    LEFT = -1, 0
+    UP = 0, -1
+    # Create tables F and Ptr
+    F = {}
+    Ptr = {}
+    F[-1, -1] = 0
+    for i in range(N):
+        F[i, -1] = -i
+
+    for j in range(M):
+        F[-1, j] = -j
+
+    option_Ptr = DIAG, LEFT, UP
+    for i, j in product(range(N), range(M)):
+        option_F = (
+            F[i - 1, j - 1] + s(x[i], y[j]),
+            F[i - 1, j] - 1,
+            F[i, j - 1] - 1,
+        )
+        F[i, j], Ptr[i, j] = max(zip(option_F, option_Ptr))
+
+    # Work backwards from (N - 1, M - 1) to (0, 0)
+    # to find the best alignment.
+    alignment = deque()
+    i, j = N - 1, M - 1
+    while i >= 0 and j >= 0:
+        direction = Ptr[i, j]
+        if direction == DIAG:
+            element = i, j
+
+        elif direction == LEFT:
+            element = i, None
+
+        elif direction == UP:
+            element = None, j
+
+        alignment.appendleft(element)
+        di, dj = direction
+        i, j = i + di, j + dj
+
+    while i >= 0:
+        alignment.appendleft((i, None))
+        i -= 1
+
+    while j >= 0:
+        alignment.appendleft((None, j))
+        j -= 1
+
+    return list(alignment)
+  #+end_src
+
+Let's try the needleman_wunsch alignment function:
+
+  #+begin_src python
+needleman_wunsch("CAT", "CT")
+  #+end_src
+
+  #+RESULTS:
+  | 0 |    0 |
+  | 1 | None |
+  | 2 |    1 |
+
+In terms of indices it is hard to say what this alignment looks
+like. If we use the print function also given by John Lekberg:
+
+#+begin_src python :results silent
+def get_alignment(x, y, alignment):
+    return (
+        "".join("-" if i is None else x[i] for i, _ in alignment),
+        "".join("-" if j is None else y[j] for _, j in alignment),
+    )
+#+end_src
+
+#+begin_src python
+get_alignment(
+    ["C", "A", "T"], ["C", "T"], needleman_wunsch(["C", "A", "T"], ["C", "T"])
+)
+#+end_src
+
+#+RESULTS:
+| CAT | C-T |
+
+*** Using the algorithm for phonemes
+This algorithm can almost directly be applied to phonemes. The only
+choice that I need to make here, is what to do with the gaps in the
+alignment. I have chosen to put padding symbols in place of these gaps
+to reflect the absence of sound. Aside from that, I return the
+sequences as lists of strings (the phonemes/padding symbols) rather
+than strings.
+
+#+begin_src python :results silent
+def get_phoneme_alignment(x, y, alignment):
+    return (
+        ["pad" if i is None else x[i] for i, _ in alignment],
+        ["pad" if j is None else y[j] for _, j in alignment],
+    )
+#+end_src
+
+Now let's try this out on two sequences of phonemes:
+
+#+begin_src python
+get_phoneme_alignment(
+    train_ref[0], train_asr[0], needleman_wunsch(train_ref[0], train_asr[0])
+)
+#+end_src
+
+#+RESULTS:
+| hh | aw | s | pad | ah | v | pad | d | eh | r | ey | ax | n | pad | b | ih | k | ey | m | pad | n | ow | n | pad | th | r | uw | pad | b | ey | ax | n | s | pad | ae | n | d | pad | w | ih | ch | pad | ah | v | pad | b | ey | ax | n | pad | pad | s | pad | pad | ax | s | pad | r | eh | l | ax | t | ih | v | z |
+| hh | aw | s | pad | ah | v | pad | d | eh | r | ey | ax | n | pad | b | ih | k | ey | m | pad | n | ow | n | pad | th | r | uw | pad | b | ey | ax | n | s | pad | ae | n | d | pad | w | ih | ch | pad | ah | v | pad | b | ih | aa | n | d   | pad | s | ey  | pad | eh | s | pad | r | eh | l | ax | t | ih | v | z |
+
+This looks ready to use for the training of a phoneme embedding!
+** Embedding
+Now I can train the embedding:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2va = Word2Vec(
+    #negative=0,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+  #+begin_src python :results silent
+context_window = 0
+  #+end_src
+
+  #+begin_src python
+train_aligned_p2va = []
+for i in range(len(train_ref)):
+    alignment = get_phoneme_alignment(
+        train_ref[i], train_asr[i], needleman_wunsch(train_ref[i], train_asr[i])
+    )
+    ref_alignment = alignment[0]
+    asr_alignment = alignment[1]
+    for j in range(len(ref_alignment)):
+        train_aligned_p2va.append(
+            [ref_alignment[j]]
+            + [
+                asr_alignment[
+                    max(0, j - context_window) : min(
+                        j + context_window + 1, len(asr_alignment)
+                    )
+                ]
+            ]
+        )
+        train_aligned_p2va.append(
+            [asr_alignment[j]]
+            + [
+                ref_alignment[
+                    max(0, j - context_window) : min(
+                        j + context_window + 1, len(ref_alignment)
+                    )
+                ]
+            ]
+        )
+
+(
+    train_ref[0][48:53],
+    train_asr[0][48:53],
+    train_aligned_p2va[100],
+    train_aligned_p2va[101],
+)
+  #+end_src
+
+  #+RESULTS:
+
+  #+begin_src python
+start = len(p2va.wv.vocab)
+p2va.build_vocab(train_ref + train_asr)
+end = len(p2va.wv.vocab)
+(start, end)
+  #+end_src
+
+  #+RESULTS:
+  | 0 | 41 |
+
+  #+begin_src python :results silent
+for sentence in tqdm.tqdm(train_aligned_p2va):
+    for word in sentence[1]:
+        _ = gensim.models.word2vec.train_sg_pair(
+            p2va,
+            sentence[0],
+            p2va.wv.vocab[word].index,
+            alpha=0.025,
+            )
+
+p2va.save(f"p2va_{contex_window}_asr.model")
+  #+end_src
+
+To make the train_sg_pair function work with the fast cython based
+version of gensim I had to edit one line in the word2vec.py file. I
+exchanged 'model.neg_labels' for 'array([1] + [0] * model.negative)',
+since the word2vec model in the fast version does not have a
+neg_labels attribute.
+
+** Context window = 2
+#+begin_src python :results silent
+p2va_2 = Word2Vec.load("p2va_2_asr.model")
+#+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2va_2.wv.similarity("ay", "oy"),
+    p2va_2.wv.similarity("ey", "ay"),
+    p2va_2.wv.similarity("uw", "aw"),
+    p2va_2.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.62876457 | 0.79092807 | 0.7093742 | 0.68627286 |
+
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2va_2.wv.similarity("hh", "oy"),
+    p2va_2.wv.similarity("v", "dh"),
+    p2va_2.wv.similarity("z", "th"),
+    p2va_2.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.55439144 | 0.83803666 | 0.79349804 | 0.80255985 |
+
+*** Visualization
+   #+begin_src python
+phonemes = list(p2va_2.wv.vocab)
+X = p2va_2[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | l | t | z | aa | f | ao | er | p | sh | ng | ay | uh | y | iy | g | dh | jh | oy | zh |
+   | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |   |   |   |    |   |    |    |   |    |    |    |    |   |    |   |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 41 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2va_2.png")
+   #+end_src
+
+** Context window = 0
+#+begin_src python :results silent
+p2va_0 = Word2Vec.load("p2va_0_asr.model")
+#+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2va_0.wv.similarity("ay", "oy"),
+    p2va_0.wv.similarity("ey", "ay"),
+    p2va_0.wv.similarity("uw", "aw"),
+    p2va_0.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.12977214 | 0.39927554 | 0.13998131 | 0.036319654 |
+
+
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2va_0.wv.similarity("hh", "oy"),
+    p2va_0.wv.similarity("v", "dh"),
+    p2va_0.wv.similarity("z", "th"),
+    p2va_0.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.14004605 | -0.22204834 | -0.25583318 | 0.30523828 |
+
+*** Visualization
+   #+begin_src python
+phonemes = list(p2va_0.wv.vocab)
+X = p2va_0[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | l | t | z | aa | f | ao | er | p | sh | ng | ay | uh | y | iy | g | dh | jh | oy | zh |
+   | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |   |   |   |    |   |    |    |   |    |    |    |    |   |    |   |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 41 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2va_0.png")
+   #+end_src
+
+* s2s
