@@ -6,16 +6,20 @@
 * Imports
   #+begin_src python :results silent
 from collections import deque
+import copy
+from itertools import chain, product, zip_longest
+import multiprocessing
+
 from gensim.models import Word2Vec
 import gensim.models.word2vec
-from itertools import chain, product, zip_longest
 import pandas as pd
+import pickle
 from sklearn.manifold import TSNE
 import tqdm
-import multiprocessing
   #+end_src
 
 * Data
+** SQuAD and Subj
 First I load in the training data in their phonemized versions:
 
   #+begin_src python :results silent
@@ -113,8 +117,55 @@ train_ref[0]
   #+RESULTS:
   | hh | aw | s | pad | ah | v | pad | d | eh | r | ey | ax | n | pad | b | ih | k | ey | m | pad | n | ow | n | pad | th | r | uw | pad | b | ey | ax | n | s | pad | ae | n | d | pad | w | ih | ch | pad | ah | v | pad | b | ey | ax | n | s | pad | ax | s | pad | r | eh | l | ax | t | ih | v | z |
 
+** Dict
+  #+begin_src python
+with open("data/cmu_lst1.pkl", "rb") as infile:
+    lst1 = pickle.load(infile)
+
+with open("data/cmu_lst2.pkl", "rb") as infile:
+    lst2 = pickle.load(infile)
+
+(lst1[0], lst2[0])
+  #+end_src
+
+  #+RESULTS:
+  | S | EH | M | IY | K | OW | L | AH | N |
+  | S | EH | M | IH | K | OW | L | AH | N |
+
+To better match the SQuAD and Subj datasets, I add a 'pad' padding
+symbol at the end of each word and I lowercase the phonemes:
+
+  #+begin_src python
+for i in range(len(lst1)):
+    lst1[i] = list(map(lambda x: x.lower(), lst1[i]))
+    lst2[i] = list(map(lambda x: x.lower(), lst2[i]))
+
+(lst1[0], lst2[0])
+  #+end_src
+
+  #+RESULTS:
+  | s | eh | m | iy | k | ow | l | ah | n |
+  | s | eh | m | ih | k | ow | l | ah | n |
+
+  #+begin_src python
+lst1_pad = copy.deepcopy(lst1)
+lst2_pad = copy.deepcopy(lst2)
+for i in range(len(lst1_pad)):
+    lst1_pad[i].append('pad')
+    lst2_pad[i].append('pad')
+
+(lst1_pad[0], lst2_pad[0])
+  #+end_src
+
+  #+RESULTS:
+  | s | eh | m | iy | k | ow | l | ah | n | pad |
+  | s | eh | m | ih | k | ow | l | ah | n | pad |
+
+Now the Dict data is ready to use for training phoneme embeddings!
+
 * p2vc
-** Embedding
+** SQuAD and Subj
+*** Embedding
 For the first embedding I can directly train it and the reference and
 asr sets are just added together:
 
@@ -164,7 +215,7 @@ dissimilar, based on intuition:
 It looks like the model gives somewhat higher scores to similar
 sounding phonemes, but the difference is not very big.
 
-** Visualization
+*** Visualization
    #+begin_src python
 phonemes = list(p2vc.wv.vocab)
 X = p2vc[phonemes]
@@ -200,8 +251,191 @@ fig = ax1.get_figure()
 fig.savefig("p2vc.png")
    #+end_src
 
+** Dict
+*** Embedding
+For the first embedding I can directly train it and lst1 and lst2 are
+just added together:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2vc = Word2Vec(
+    negative=30,
+    sentences=lst1+lst2,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2vc.wv.similarity("ay", "oy"),
+    p2vc.wv.similarity("ey", "ay"),
+    p2vc.wv.similarity("uw", "aw"),
+    p2vc.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.7023528 | 0.72887576 | 0.51764226 | 0.7149381 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2vc.wv.similarity("hh", "oy"),
+    p2vc.wv.similarity("v", "dh"),
+    p2vc.wv.similarity("z", "th"),
+    p2vc.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.3766211 | 0.50570977 | 0.61589813 | 0.5205286 |
+
+It looks like the model gives somewhat higher scores to similar
+sounding phonemes, but the difference is not very big, except for "hh"
+and "oy".
+
+*** Visualization
+The Dict data has one less phoneme compared to the phonemized SQuAD
+and Subj data, namely the 'ax' phoneme:
+
+   #+begin_src python
+phonemes = list(p2vc.wv.vocab)
+X = p2vc[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   |  s | eh | m | iy | k | ow | l | ah | n | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
+   | 39 | 20 |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 39 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2vc_dict.png")
+   #+end_src
+
+** Dict_pad
+*** Embedding
+For the first embedding I can directly train it and lst1_pad and lst2_pad are
+just added together:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2vc = Word2Vec(
+    negative=30,
+    sentences=lst1_pad+lst2_pad,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2vc.wv.similarity("ay", "oy"),
+    p2vc.wv.similarity("ey", "ay"),
+    p2vc.wv.similarity("uw", "aw"),
+    p2vc.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.7128182 | 0.66022134 | 0.44855282 | 0.7108065 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2vc.wv.similarity("hh", "oy"),
+    p2vc.wv.similarity("v", "dh"),
+    p2vc.wv.similarity("z", "th"),
+    p2vc.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.36733523 | 0.4836696 | 0.5747122 | 0.4556577 |
+
+It looks like the model gives somewhat higher scores to similar
+sounding phonemes, but the difference is not very big, except for "hh"
+and "oy".
+
+*** Visualization
+The Dict data has one less phoneme compared to the phonemized SQuAD
+and Subj data, namely the 'ax' phoneme:
+
+   #+begin_src python
+phonemes = list(p2vc.wv.vocab)
+X = p2vc[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   |  s | eh | m | iy | k | ow | l | ah | n | pad | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
+   | 40 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 40 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2vc_dict_pad.png")
+   #+end_src
+
 * p2vm
-** Embedding
+** SQuAD and Subj
+*** Embedding
 For this embedding I first need to create a list of lists where the
 inner lists are made up out of alternating elements (phonemes) from
 the reference and asr sentences. If one list is longer than the other,
@@ -268,7 +502,7 @@ It looks like the model gives similar scores to similar sounding
 phonemes and dissimilar sounding phonemes. Something that surprises me
 is the very low score for "ey" and "ay", even though they are similar
 sounding phonemes.
-** Visualization
+*** Visualization
    #+begin_src python
 phonemes = list(p2vm.wv.vocab)
 X = p2vm[phonemes]
@@ -302,6 +536,216 @@ ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
 fig = ax1.get_figure()
 fig.savefig("p2vm.png")
+   #+end_src
+
+** Dict
+*** Embedding
+For this embedding I first need to create a list of lists where the
+inner lists are made up out of alternating elements (phonemes) from
+lst1 and lst2. If one list is longer than the other, the 'extra'
+elements (phonemes) are added at the end of the mixed list.
+
+  #+begin_src python
+train_mixed_p2vm = [
+    list(filter(None, chain(*zip_longest(lst1[i], lst2[i]))))
+    for i in range(len(lst1))
+]
+train_mixed_p2vm[0]
+  #+end_src
+
+  #+RESULTS:
+  | s | s | eh | eh | m | m | iy | ih | k | k | ow | ow | l | l | ah | ah | n | n |
+
+Now I can train the embedding:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2vm = Word2Vec(
+    negative=20,
+    sentences=train_mixed_p2vm,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2vm.wv.similarity("ay", "oy"),
+    p2vm.wv.similarity("ey", "ay"),
+    p2vm.wv.similarity("uw", "aw"),
+    p2vm.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.08464153 | 0.41159308 | 0.4019573 | 0.23694985 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2vm.wv.similarity("hh", "oy"),
+    p2vm.wv.similarity("v", "dh"),
+    p2vm.wv.similarity("z", "th"),
+    p2vm.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.07789143 | 0.14519733 | 0.39934722 | 0.53432506 |
+
+It looks like the model gives similar scores to similar sounding
+phonemes and dissimilar sounding phonemes. Something that surprises me
+is the very low score for "sh" and "zh", even though they are similar
+sounding phonemes. The high score for "w" and "l" is also surprising,
+because I do not expect them to sound similar.
+
+*** Visualization
+   #+begin_src python
+phonemes = list(p2vm.wv.vocab)
+X = p2vm[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   |  s | eh | m | iy | ih | k | ow | l | ah | n | ey | aa | r | z | b | ae | uw | aw | d | t | ng | sh | er | y | ao | v | p | ch | uh | g | th | w | ay | jh | hh | f | oy | dh | zh |
+   | 39 | 20 |   |    |    |   |    |   |    |   |    |    |   |   |   |    |    |    |   |   |    |    |    |   |    |   |   |    |    |   |    |   |    |    |    |   |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 39 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2vm_dict.png")
+   #+end_src
+
+** Dict_pad
+*** Embedding
+For this embedding I first need to create a list of lists where the
+inner lists are made up out of alternating elements (phonemes) from
+lst1_pad and lst2_pad. If one list is longer than the other, the
+'extra' elements (phonemes) are added at the end of the mixed list.
+
+  #+begin_src python
+train_mixed_p2vm = [
+    list(filter(None, chain(*zip_longest(lst1_pad[i], lst2_pad[i]))))
+    for i in range(len(lst1_pad))
+]
+train_mixed_p2vm[0]
+  #+end_src
+
+  #+RESULTS:
+  | s | s | eh | eh | m | m | iy | ih | k | k | ow | ow | l | l | ah | ah | n | n | pad | pad |
+
+Now I can train the embedding:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2vm = Word2Vec(
+    negative=20,
+    sentences=train_mixed_p2vm,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2vm.wv.similarity("ay", "oy"),
+    p2vm.wv.similarity("ey", "ay"),
+    p2vm.wv.similarity("uw", "aw"),
+    p2vm.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.20401978 | 0.37241453 | 0.43097487 | 0.29104888 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2vm.wv.similarity("hh", "oy"),
+    p2vm.wv.similarity("v", "dh"),
+    p2vm.wv.similarity("z", "th"),
+    p2vm.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.17852728 | 0.094824955 | 0.39766473 | 0.5215627 |
+
+It looks like the model gives similar scores to similar sounding
+phonemes and dissimilar sounding phonemes. Something that surprises me
+is the very low score for "sh" and "zh", even though they are similar
+sounding phonemes. The high score for "w" and "l" is also surprising,
+because I do not expect them to sound similar.
+
+*** Visualization
+   #+begin_src python
+phonemes = list(p2vm.wv.vocab)
+X = p2vm[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   |  s | eh | m | iy | ih | k | ow | l | ah | n | pad | ey | aa | r | z | b | ae | uw | aw | d | t | ng | sh | er | y | ao | v | p | ch | uh | g | th | w | ay | jh | hh | f | oy | dh | zh |
+   | 40 | 20 |   |    |    |   |    |   |    |   |     |    |    |   |   |   |    |    |    |   |   |    |    |    |   |    |   |   |    |    |   |    |   |    |    |    |   |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 40 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2vm_dict_pad.png")
    #+end_src
 
 * p2va
@@ -436,7 +880,9 @@ get_phoneme_alignment(
 | hh | aw | s | pad | ah | v | pad | d | eh | r | ey | ax | n | pad | b | ih | k | ey | m | pad | n | ow | n | pad | th | r | uw | pad | b | ey | ax | n | s | pad | ae | n | d | pad | w | ih | ch | pad | ah | v | pad | b | ih | aa | n | d   | pad | s | ey  | pad | eh | s | pad | r | eh | l | ax | t | ih | v | z |
 
 This looks ready to use for the training of a phoneme embedding!
-** Embedding
+
+** SQuAD and Subj
+*** Embedding
 Now I can train the embedding:
 
   #+begin_src python :results silent
@@ -515,7 +961,7 @@ for sentence in tqdm.tqdm(train_aligned_p2va):
             alpha=0.025,
             )
 
-p2va.save(f"p2va_{contex_window}_asr.model")
+p2va.save(f"p2va_{context_window}_asr.model")
   #+end_src
 
 To make the train_sg_pair function work with the fast cython based
@@ -524,7 +970,7 @@ exchanged 'model.neg_labels' for 'array([1] + [0] * model.negative)',
 since the word2vec model in the fast version does not have a
 neg_labels attribute.
 
-** Context window = 2
+*** Context window = 2
 #+begin_src python :results silent
 p2va_2 = Word2Vec.load("p2va_2_asr.model")
 #+end_src
@@ -560,7 +1006,7 @@ dissimilar, based on intuition:
   #+RESULTS:
   | 0.55439144 | 0.83803666 | 0.79349804 | 0.80255985 |
 
-*** Visualization
+**** Visualization
    #+begin_src python
 phonemes = list(p2va_2.wv.vocab)
 X = p2va_2[phonemes]
@@ -594,9 +1040,9 @@ ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
 fig = ax1.get_figure()
 fig.savefig("p2va_2.png")
-   #+end_src
+#+end_src
 
-** Context window = 0
+*** Context window = 0
 #+begin_src python :results silent
 p2va_0 = Word2Vec.load("p2va_0_asr.model")
 #+end_src
@@ -633,7 +1079,7 @@ dissimilar, based on intuition:
   #+RESULTS:
   | 0.14004605 | -0.22204834 | -0.25583318 | 0.30523828 |
 
-*** Visualization
+**** Visualization
    #+begin_src python
 phonemes = list(p2va_0.wv.vocab)
 X = p2va_0[phonemes]
@@ -669,4 +1115,472 @@ fig = ax1.get_figure()
 fig.savefig("p2va_0.png")
    #+end_src
 
-* s2s
+** Dict
+*** Embedding
+Now I can train the embedding:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2va = Word2Vec(
+    #negative=0,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+  #+begin_src python :results silent
+context_window = 0
+  #+end_src
+
+  #+begin_src python
+train_aligned_p2va = []
+for i in range(len(lst1)):
+    alignment = get_phoneme_alignment(
+        lst1[i], lst2[i], needleman_wunsch(lst1[i], lst2[i])
+    )
+    lst1_alignment = alignment[0]
+    lst2_alignment = alignment[1]
+    for j in range(len(lst1_alignment)):
+        train_aligned_p2va.append(
+            [lst1_alignment[j]]
+            + [
+                lst2_alignment[
+                    max(0, j - context_window) : min(
+                        j + context_window + 1, len(lst2_alignment)
+                    )
+                ]
+            ]
+        )
+        train_aligned_p2va.append(
+            [lst2_alignment[j]]
+            + [
+                lst1_alignment[
+                    max(0, j - context_window) : min(
+                        j + context_window + 1, len(lst1_alignment)
+                    )
+                ]
+            ]
+        )
+
+(
+    lst1[0][0:5],
+    lst2[0][0:5],
+    train_aligned_p2va[6],
+    train_aligned_p2va[7],
+)
+  #+end_src
+
+  #+RESULTS:
+  | s  | eh   | m | iy | k |
+  | s  | eh   | m | ih | k |
+  | iy | (ih) |   |    |   |
+  | ih | (iy) |   |    |   |
+
+  #+begin_src python
+start = len(p2va.wv.vocab)
+p2va.build_vocab([["pad", "pad", "pad", "pad", "pad"]] + lst1 + lst2)
+end = len(p2va.wv.vocab)
+(start, end)
+  #+end_src
+
+  #+RESULTS:
+  | 0 | 40 |
+
+  #+begin_src python :results silent
+for sentence in tqdm.tqdm(train_aligned_p2va):
+    for word in sentence[1]:
+        _ = gensim.models.word2vec.train_sg_pair(
+            p2va,
+            sentence[0],
+            p2va.wv.vocab[word].index,
+            alpha=0.025,
+            )
+
+p2va.save(f"p2va_{context_window}_dict.model")
+  #+end_src
+
+To make the train_sg_pair function work with the fast cython based
+version of gensim I had to edit one line in the word2vec.py file. I
+exchanged 'model.neg_labels' for 'array([1] + [0] * model.negative)',
+since the word2vec model in the fast version does not have a
+neg_labels attribute.
+
+*** Context window = 2
+#+begin_src python :results silent
+p2va_2 = Word2Vec.load("p2va_2_dict.model")
+#+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2va_2.wv.similarity("ay", "oy"),
+    p2va_2.wv.similarity("ey", "ay"),
+    p2va_2.wv.similarity("uw", "aw"),
+    p2va_2.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.7323048 | 0.88144827 | 0.8737555 | 0.79604393 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2va_2.wv.similarity("hh", "oy"),
+    p2va_2.wv.similarity("v", "dh"),
+    p2va_2.wv.similarity("z", "th"),
+    p2va_2.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.79544413 | 0.7986341 | 0.84386724 | 0.82617694 |
+
+**** Visualization
+   #+begin_src python
+phonemes = list(p2va_2.wv.vocab)
+X = p2va_2[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   | pad |  s | eh | m | iy | k | ow | l | ah | n | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
+   |  40 | 20 |    |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 40 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2va_2_dict.png")
+#+end_src
+
+*** Context window = 0
+#+begin_src python :results silent
+p2va_0 = Word2Vec.load("p2va_0_dict.model")
+#+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2va_0.wv.similarity("ay", "oy"),
+    p2va_0.wv.similarity("ey", "ay"),
+    p2va_0.wv.similarity("uw", "aw"),
+    p2va_0.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.4840838 | 0.7190375 | 0.76230735 | 0.7766007 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2va_0.wv.similarity("hh", "oy"),
+    p2va_0.wv.similarity("v", "dh"),
+    p2va_0.wv.similarity("z", "th"),
+    p2va_0.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.735503 | 0.7481821 | 0.6242971 | 0.505862 |
+
+**** Visualization
+   #+begin_src python
+phonemes = list(p2va_0.wv.vocab)
+X = p2va_0[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   | pad |  s | eh | m | iy | k | ow | l | ah | n | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
+   |  40 | 20 |    |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 40 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2va_0_dict.png")
+   #+end_src
+
+** Dict_pad
+*** Embedding
+Now I can train the embedding:
+
+  #+begin_src python :results silent
+EMB_DIM = 20
+p2va = Word2Vec(
+    #negative=0,
+    size=EMB_DIM,
+    window=2,
+    sg=1,
+    iter=10,
+    workers=multiprocessing.cpu_count(),
+)
+  #+end_src
+
+  #+begin_src python :results silent
+context_window = 2
+  #+end_src
+
+  #+begin_src python
+train_aligned_p2va = []
+for i in range(len(lst1)):
+    alignment = get_phoneme_alignment(
+        lst1_pad[i], lst2_pad[i], needleman_wunsch(lst1_pad[i], lst2_pad[i])
+    )
+    lst1_pad_alignment = alignment[0]
+    lst2_pad_alignment = alignment[1]
+    for j in range(len(lst1_pad_alignment)):
+        train_aligned_p2va.append(
+            [lst1_pad_alignment[j]]
+                   + [
+                lst2_pad_alignment[
+                    max(0, j - context_window) : min(
+                        j + context_window + 1, len(lst2_pad_alignment)
+                    )
+                ]
+            ]
+        )
+        train_aligned_p2va.append(
+            [lst2_pad_alignment[j]]
+            + [
+                lst1_pad_alignment[
+                    max(0, j - context_window) : min(
+                        j + context_window + 1, len(lst1_pad_alignment)
+                    )
+                ]
+            ]
+        )
+
+(
+    lst1_pad[0][0:10],
+    lst2_pad[0][0:10],
+    train_aligned_p2va[6],
+    train_aligned_p2va[7],
+)
+  #+end_src
+
+  #+RESULTS:
+  | s  | eh             | m | iy | k | ow | l | ah | n | pad |
+  | s  | eh             | m | ih | k | ow | l | ah | n | pad |
+  | iy | (eh m ih k ow) |   |    |   |    |   |    |   |     |
+  | ih | (eh m iy k ow) |   |    |   |    |   |    |   |     |
+
+  #+begin_src python
+start = len(p2va.wv.vocab)
+p2va.build_vocab(lst1_pad + lst2_pad)
+end = len(p2va.wv.vocab)
+(start, end)
+  #+end_src
+
+  #+RESULTS:
+  | 0 | 40 |
+
+  #+begin_src python :results silent
+for sentence in tqdm.tqdm(train_aligned_p2va):
+    for word in sentence[1]:
+        _ = gensim.models.word2vec.train_sg_pair(
+            p2va,
+            sentence[0],
+            p2va.wv.vocab[word].index,
+            alpha=0.025,
+            )
+
+p2va.save(f"p2va_{context_window}_dict_pad.model")
+  #+end_src
+
+To make the train_sg_pair function work with the fast cython based
+version of gensim I had to edit one line in the word2vec.py file. I
+exchanged 'model.neg_labels' for 'array([1] + [0] * model.negative)',
+since the word2vec model in the fast version does not have a
+neg_labels attribute.
+
+*** Context window = 2
+#+begin_src python :results silent
+p2va_2 = Word2Vec.load("p2va_2_dict_pad.model")
+#+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2va_2.wv.similarity("ay", "oy"),
+    p2va_2.wv.similarity("ey", "ay"),
+    p2va_2.wv.similarity("uw", "aw"),
+    p2va_2.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.8294416 | 0.8794624 | 0.8637798 | 0.8030078 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2va_2.wv.similarity("hh", "oy"),
+    p2va_2.wv.similarity("v", "dh"),
+    p2va_2.wv.similarity("z", "th"),
+    p2va_2.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.7381566 | 0.8203041 | 0.83652234 | 0.85238844 |
+
+**** Visualization
+   #+begin_src python
+phonemes = list(p2va_2.wv.vocab)
+X = p2va_2[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   |  s | eh | m | iy | k | ow | l | ah | n | pad | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
+   | 40 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 40 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2va_2_dict_pad.png")
+#+end_src
+
+*** Context window = 0
+#+begin_src python :results silent
+p2va_0 = Word2Vec.load("p2va_0_dict_pad.model")
+#+end_src
+
+These are the similarity scores for phonemes I expect to be similar,
+based on intuition:
+
+  #+begin_src python
+(
+    p2va_0.wv.similarity("ay", "oy"),
+    p2va_0.wv.similarity("ey", "ay"),
+    p2va_0.wv.similarity("uw", "aw"),
+    p2va_0.wv.similarity("sh", "zh"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.70183736 | 0.79159486 | 0.7826972 | 0.7395877 |
+
+These are the similarity scores for phonemes I expect to be
+dissimilar, based on intuition:
+
+  #+begin_src python
+(
+    p2va_0.wv.similarity("hh", "oy"),
+    p2va_0.wv.similarity("v", "dh"),
+    p2va_0.wv.similarity("z", "th"),
+    p2va_0.wv.similarity("w", "l"),
+)
+  #+end_src
+
+  #+RESULTS:
+  | 0.6647972 | 0.7729586 | 0.6467948 | 0.6428419 |
+
+**** Visualization
+   #+begin_src python
+phonemes = list(p2va_0.wv.vocab)
+X = p2va_0[phonemes]
+
+(phonemes, X.shape)
+   #+end_src
+
+   #+RESULTS:
+   |  s | eh | m | iy | k | ow | l | ah | n | pad | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
+   | 40 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+   #+begin_src python
+tsne = TSNE(n_components=2)
+X_tsne = tsne.fit_transform(X)
+df = pd.DataFrame(X_tsne, index=phonemes, columns=["x", "y"])
+
+df.shape
+   #+end_src
+
+   #+RESULTS:
+   | 40 | 2 |
+
+   #+begin_src python :results silent
+def annotate(row, ax):
+    ax.annotate(row.name, (row.x, row.y),
+                xytext=(10, -5), textcoords='offset points')
+   #+end_src
+
+   #+begin_src python :results silent
+ax1 = df.plot.scatter(x="x", y="y")
+df.apply(annotate, ax=ax1, axis=1)
+fig = ax1.get_figure()
+fig.savefig("p2va_0_dict_pad.png")
+   #+end_src

@@ -3,6 +3,12 @@
 #+DATE: Tuesday, 02 February 2021
 #+PROPERTY: header-args :exports both :session training_data :cache no :results value
 
+* Imports
+  #+begin_src python :results silent
+import itertools
+import pickle
+  #+end_src
+
 * SQuAD
 A dataset containing approximately 150.000 crowdsourced questions
 regarding a number of Wikipedia articles. Fang et al. randomly
@@ -119,3 +125,145 @@ subj_asr_phon[0]
 
 #+RESULTS:
 : dh|ax| m|uw|v|iy| b|ax|g|ih|n|z| ih|n| dh|ax| p|ae|s|t| w|eh|r| ax| y|ah|ng| b|oy| n|ey|m|d| s|ae|m| ax|t|eh|m|p|t|s| t|ax| s|ey|v| s|eh|l|ax|b| iy| f|r|ah|m| dh|ax| hh|ah|n|t|er|
+* Dict
+As an alternative way to train phoneme embeddings I will employ the
+CMU Pronouncing Dictionary. First I load in the dictionary:
+
+  #+begin_src python
+with open("data/cmu_dict.txt", "r", encoding="ISO-8859-1") as infile:
+    cmu_dict = [i.strip() for i in infile.readlines()]
+
+cmu_dict[0]
+  #+end_src
+
+  #+RESULTS:
+  : ;;; # CMUdict  --  Major Version: 0.07
+
+Now I remove the introductory comment:
+
+  #+begin_src python
+cmu_dict = cmu_dict[56:]
+
+cmu_dict[0]
+  #+end_src
+
+  #+RESULTS:
+  : !EXCLAMATION-POINT  EH2 K S K L AH0 M EY1 SH AH0 N P OY2 N T
+
+I will only use the words with multiple pronounciations (indicated by
+an (i) after the word corresponding to the ith additional
+pronounciation), so I will need to filter those out.
+
+First I split the word and the phonemes:
+  #+begin_src python
+cmu_dict = [i.split() for i in cmu_dict]
+
+cmu_dict[0]
+  #+end_src
+
+  #+RESULTS:
+  | !EXCLAMATION-POINT | EH2 | K | S | K | L | AH0 | M | EY1 | SH | AH0 | N | P | OY2 | N | T |
+
+Now I create a dictionary with the words as keys and lists of phonemes as values:
+
+  #+begin_src python
+cmu_dictionary = {}
+for item in cmu_dict:
+  cmu_dictionary[item[0]] = item[1:]
+
+len(cmu_dictionary)
+  #+end_src
+
+  #+RESULTS:
+  : 133854
+
+I remove all words from the dictionary that do not have alternative pronounciations:
+
+  #+begin_src python
+to_pop = []
+for key in cmu_dictionary.keys():
+    #if the key is an additional pronounciation or
+    #it has at least one additional pronounciation
+    if not key[-1] == ")" and not key + "(1)" in cmu_dictionary:
+        to_pop.append(key)
+
+for key in to_pop:
+    cmu_dictionary.pop(key)
+
+len(cmu_dictionary)
+  #+end_src
+
+  #+RESULTS:
+  : 16934
+
+Now I make lists of the keys that refer to alternative pronounciations
+of the same word:
+
+  #+begin_src python
+combinations = []
+combination = []
+for key in cmu_dictionary.keys():
+    if key[-1] == ")":
+        combination.append(key)
+
+    elif key + "(1)" in cmu_dictionary:
+        if combination:
+            combinations.append(combination)
+
+        combination = [key]
+
+(len(combinations), combinations[0])
+  #+end_src
+
+  #+RESULTS:
+  | 8153 | (;SEMI-COLON ;SEMI-COLON(1)) |
+
+That goes into one list with all these combinations:
+
+  #+begin_src python
+combs = [x for item in combinations for x in list(itertools.combinations(item, 2)) ]
+
+(len(combs), combs[0])
+  #+end_src
+
+  #+RESULTS:
+  | 9549 | (;SEMI-COLON ;SEMI-COLON(1)) |
+
+Now each part of the combinations will get its own list which I will
+use to train the phonemes:
+
+  #+begin_src python
+lst1 = []
+lst2 = []
+
+for comb in combs:
+  add1 = cmu_dictionary[comb[0]]
+  add2 = cmu_dictionary[comb[1]]
+  for i in range(len(add1)):
+      #Remove digits added to the end of the phoneme to express stress
+      if add1[i][-1].isdigit():
+          add1[i] = add1[i][:-1]
+
+  for j in range(len(add2)):
+      #Remove digits added to the end of the phoneme with open("data/cmu_dict.txt", "r", encoding="ISO-8859-1") as infile:
+    cmu_dict = [i.strip() for i in infile.readlines()]
+to express stress
+      if add2[j][-1].isdigit():
+          add2[j] = add2[j][:-1]
+
+  lst1.append(add1)
+  lst2.append(add2)
+
+(lst1[0], lst2[0], len(lst1), len(lst2))
+  #+end_src
+
+  #+RESULTS:
+  | (S EH M IY K OW L AH N) | (S EH M IH K OW L AH N) | 9549 | 9549 |
+
+  #+begin_src python :results silent
+with open("data/cmu_lst1.pkl", "wb") as outfile:
+    pickle.dump(lst1, outfile)
+
+with open("data/cmu_lst2.pkl", "wb") as outfile:
+    pickle.dump(lst2, outfile)
+  #+end_src
