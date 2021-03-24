@@ -12,6 +12,7 @@ import multiprocessing
 
 from gensim.models import Word2Vec
 import gensim.models.word2vec
+import numpy as np
 import pandas as pd
 import pickle
 from sklearn.manifold import TSNE
@@ -176,7 +177,7 @@ phoneme embeddings!
 For the first embedding I can directly train it and the reference and
 asr sets are just added together:
 
-  #+begin_src python
+  #+begin_src python :results silent
 p2vc = Word2Vec.load("models/p2vc_asr.model")
   #+end_src
 
@@ -234,6 +235,7 @@ embedding, as well as the embedding itself:
    #+begin_src python
 phonemes = list(p2vc.wv.vocab)
 X = p2vc[phonemes]
+np.save("models/p2vc_asr.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -275,7 +277,7 @@ fig.savefig("figures/p2vc_asr.png")
 For the first embedding I can directly train it and lst1 and lst2 are
 just added together:
 
-  #+begin_src python
+  #+begin_src python :results silent
 p2vc = Word2Vec.load("models/p2vc_dict.model")
   #+end_src
 
@@ -337,6 +339,7 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
    #+begin_src python
 phonemes = list(p2vc.wv.vocab)
 X = p2vc[phonemes]
+np.save("models/p2vc_dict.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -378,7 +381,7 @@ fig.savefig("figures/p2vc_dict.png")
 For the first embedding I can directly train it and lst1_pad and lst2_pad are
 just added together:
 
-  #+begin_src python
+  #+begin_src python :results silent
 p2vc = Word2Vec.load("models/p2vc_dict_pad.model")
   #+end_src
 
@@ -439,6 +442,7 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
    #+begin_src python
 phonemes = list(p2vc.wv.vocab)
 X = p2vc[phonemes]
+np.save("models/p2vc_dict_pad.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -497,7 +501,7 @@ train_mixed_p2vm[0]
 
 Now I can train the embedding:
 
-  #+begin_src python
+  #+begin_src python :results silent
 p2vm = Word2Vec.load("models/p2vm_asr.model")
   #+end_src
 
@@ -556,6 +560,7 @@ embedding, as well as the embedding itself:
    #+begin_src python
 phonemes = list(p2vm.wv.vocab)
 X = p2vm[phonemes]
+np.save("models/p2vm_asr.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -612,7 +617,7 @@ train_mixed_p2vm[0]
 
 Now I can train the embedding:
 
-  #+begin_src python
+  #+begin_src python :results silent
 p2vm = Word2Vec.load("models/p2vm_dict.model")
   #+end_src
 
@@ -675,6 +680,7 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
    #+begin_src python
 phonemes = list(p2vm.wv.vocab)
 X = p2vm[phonemes]
+np.save("models/p2vm_dict.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -731,7 +737,7 @@ train_mixed_p2vm[0]
 
 Now I can train the embedding:
 
-  #+begin_src python
+  #+begin_src python :results silent
 p2vm = Word2Vec.load("models/p2vm_dict_pad.model")
   #+end_src
 
@@ -794,6 +800,7 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
    #+begin_src python
 phonemes = list(p2vm.wv.vocab)
 X = p2vm[phonemes]
+np.save("models/p2vm_dict_pad.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -1052,7 +1059,7 @@ for sentence in tqdm.tqdm(train_aligned_p2va):
             alpha=0.025,
             )
 
-p2va.save(f"p2va_{context_window}_asr.model")
+p2va.save(f"models/p2va_{context_window}_asr.model")
   #+end_src
 
 To make the train_sg_pair function work with the fast cython based
@@ -1063,7 +1070,7 @@ neg_labels attribute.
 
 *** Context window = 2
 #+begin_src python :results silent
-p2va_2 = Word2Vec.load("p2va_2_asr.model")
+p2va_2 = Word2Vec.load("models/p2va_2_asr.model")
 #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -1104,6 +1111,7 @@ embedding, as well as the embedding itself:
    #+begin_src python
 phonemes = list(p2va_2.wv.vocab)
 X = p2va_2[phonemes]
+np.save("models/p2va_2_asr.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -1142,7 +1150,7 @@ fig.savefig("p2va_2.png")
 
 *** Context window = 0
 #+begin_src python :results silent
-p2va_0 = Word2Vec.load("p2va_0_asr.model")
+p2va_0 = Word2Vec.load("models/p2va_0_asr.model")
 #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -1184,6 +1192,7 @@ embedding, as well as the embedding itself:
    #+begin_src python
 phonemes = list(p2va_0.wv.vocab)
 X = p2va_0[phonemes]
+np.save("models/p2va_0_asr.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -1313,7 +1322,7 @@ for sentence in tqdm.tqdm(train_aligned_p2va):
             alpha=0.025,
             )
 
-p2va.save(f"p2va_{context_window}_dict.model")
+p2va.save(f"models/p2va_{context_window}_dict.model")
   #+end_src
 
 To make the train_sg_pair function work with the fast cython based
@@ -1324,7 +1333,7 @@ neg_labels attribute.
 
 *** Context window = 2
 #+begin_src python :results silent
-p2va_2 = Word2Vec.load("p2va_2_dict.model")
+p2va_2 = Word2Vec.load("models/p2va_2_dict.model")
 #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -1366,6 +1375,7 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
    #+begin_src python
 phonemes = list(p2va_2.wv.vocab)
 X = p2va_2[phonemes]
+np.save("models/p2va_2_dict.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -1404,7 +1414,7 @@ fig.savefig("p2va_2_dict.png")
 
 *** Context window = 0
 #+begin_src python :results silent
-p2va_0 = Word2Vec.load("p2va_0_dict.model")
+p2va_0 = Word2Vec.load("models/p2va_0_dict.model")
 #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -1446,6 +1456,7 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
    #+begin_src python
 phonemes = list(p2va_0.wv.vocab)
 X = p2va_0[phonemes]
+np.save("models/p2va_0_dict.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -1575,7 +1586,7 @@ for sentence in tqdm.tqdm(train_aligned_p2va):
             alpha=0.025,
             )
 
-p2va.save(f"p2va_{context_window}_dict_pad.model")
+p2va.save(f"models/p2va_{context_window}_dict_pad.model")
   #+end_src
 
 To make the train_sg_pair function work with the fast cython based
@@ -1586,7 +1597,7 @@ neg_labels attribute.
 
 *** Context window = 2
 #+begin_src python :results silent
-p2va_2 = Word2Vec.load("p2va_2_dict_pad.model")
+p2va_2 = Word2Vec.load("models/p2va_2_dict_pad.model")
 #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -1628,6 +1639,7 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
    #+begin_src python
 phonemes = list(p2va_2.wv.vocab)
 X = p2va_2[phonemes]
+np.save("models/p2va_2_dict_pad.npy", X)
 
 (phonemes, X.shape)
    #+end_src
@@ -1666,7 +1678,7 @@ fig.savefig("p2va_2_dict_pad.png")
 
 *** Context window = 0
 #+begin_src python :results silent
-p2va_0 = Word2Vec.load("p2va_0_dict_pad.model")
+p2va_0 = Word2Vec.load("models/p2va_0_dict_pad.model")
 #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -1708,6 +1720,7 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
    #+begin_src python
 phonemes = list(p2va_0.wv.vocab)
 X = p2va_0[phonemes]
+np.save("models/p2va_0_dict_pad.npy", X)
 
 (phonemes, X.shape)
    #+end_src
