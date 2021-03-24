@@ -169,6 +169,10 @@ Now the Dict data is ready to use for training phoneme embeddings!
 For the first embedding I can directly train it and the reference and
 asr sets are just added together:
 
+  #+begin_src python
+p2vc = Word2Vec.load("models/p2vc_asr.model")
+  #+end_src
+
   #+begin_src python :results silent
 EMB_DIM = 20
 p2vc = Word2Vec(
@@ -180,6 +184,7 @@ p2vc = Word2Vec(
     iter=10,
     workers=multiprocessing.cpu_count(),
 )
+p2vc.save("models/p2vc_asr.model")
   #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -195,7 +200,7 @@ based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.57645506 | 0.50118715 | 0.41623747 | 0.5245869 |
+  | 0.58399534 | 0.49644744 | 0.38648778 | 0.52161956 |
 
 These are the similarity scores for phonemes I expect to be
 dissimilar, based on intuition:
@@ -210,7 +215,7 @@ dissimilar, based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.25415316 | 0.49989048 | 0.3160112 | 0.31361958 |
+  | 0.24047394 | 0.46784192 | 0.37347177 | 0.23343764 |
 
 It looks like the model gives somewhat higher scores to similar
 sounding phonemes, but the difference is not very big.
@@ -248,13 +253,17 @@ def annotate(row, ax):
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
 fig = ax1.get_figure()
-fig.savefig("p2vc.png")
+fig.savefig("figures/p2vc_asr.png")
    #+end_src
 
 ** Dict
 *** Embedding
 For the first embedding I can directly train it and lst1 and lst2 are
 just added together:
+
+  #+begin_src python
+p2vc = Word2Vec.load("models/p2vc_dict.model")
+  #+end_src
 
   #+begin_src python :results silent
 EMB_DIM = 20
@@ -267,6 +276,8 @@ p2vc = Word2Vec(
     iter=10,
     workers=multiprocessing.cpu_count(),
 )
+
+p2vc.save("models/p2vc_dict.model")
   #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -282,7 +293,7 @@ based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.7023528 | 0.72887576 | 0.51764226 | 0.7149381 |
+  | 0.7341004 | 0.66853726 | 0.47444394 | 0.7107227 |
 
 These are the similarity scores for phonemes I expect to be
 dissimilar, based on intuition:
@@ -297,7 +308,7 @@ dissimilar, based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.3766211 | 0.50570977 | 0.61589813 | 0.5205286 |
+  | 0.3852948 | 0.49625322 | 0.6442277 | 0.49043572 |
 
 It looks like the model gives somewhat higher scores to similar
 sounding phonemes, but the difference is not very big, except for "hh"
@@ -339,13 +350,17 @@ def annotate(row, ax):
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
 fig = ax1.get_figure()
-fig.savefig("p2vc_dict.png")
+fig.savefig("figures/p2vc_dict.png")
    #+end_src
 
 ** Dict_pad
 *** Embedding
 For the first embedding I can directly train it and lst1_pad and lst2_pad are
 just added together:
+
+  #+begin_src python
+p2vc = Word2Vec.load("models/p2vc_dict_pad.model")
+  #+end_src
 
   #+begin_src python :results silent
 EMB_DIM = 20
@@ -358,6 +373,7 @@ p2vc = Word2Vec(
     iter=10,
     workers=multiprocessing.cpu_count(),
 )
+p2vc.save("models/p2vc_dict_pad.model")
   #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -373,7 +389,7 @@ based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.7128182 | 0.66022134 | 0.44855282 | 0.7108065 |
+  | 0.6966101 | 0.64497685 | 0.48431978 | 0.60999256 |
 
 These are the similarity scores for phonemes I expect to be
 dissimilar, based on intuition:
@@ -388,7 +404,7 @@ dissimilar, based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.36733523 | 0.4836696 | 0.5747122 | 0.4556577 |
+  | 0.3262307 | 0.42761162 | 0.6622027 | 0.41843978 |
 
 It looks like the model gives somewhat higher scores to similar
 sounding phonemes, but the difference is not very big, except for "hh"
@@ -430,7 +446,7 @@ def annotate(row, ax):
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
 fig = ax1.get_figure()
-fig.savefig("p2vc_dict_pad.png")
+fig.savefig("figures/p2vc_dict_pad.png")
    #+end_src
 
 * p2vm
@@ -455,10 +471,14 @@ train_mixed_p2vm[0]
 
 Now I can train the embedding:
 
+  #+begin_src python
+p2vm = Word2Vec.load("models/p2vm_asr.model")
+  #+end_src
+
   #+begin_src python :results silent
 EMB_DIM = 20
 p2vm = Word2Vec(
-    negative=20,
+    negative=30,
     sentences=train_mixed_p2vm,
     size=EMB_DIM,
     window=2,
@@ -466,6 +486,7 @@ p2vm = Word2Vec(
     iter=10,
     workers=multiprocessing.cpu_count(),
 )
+p2vm.save("models/p2vm_asr.model")
   #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -481,7 +502,7 @@ based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.33760637 | 0.09110302 | 0.2775684 | 0.33138815 |
+  | 0.34669897 | 0.1448062 | 0.2830301 | 0.37006277 |
 
 These are the similarity scores for phonemes I expect to be
 dissimilar, based on intuition:
@@ -496,7 +517,7 @@ dissimilar, based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.14911565 | 0.52828693 | 0.1856652 | 0.26119733 |
+  | 0.113394454 | 0.4738238 | 0.17297195 | 0.2014148 |
 
 It looks like the model gives similar scores to similar sounding
 phonemes and dissimilar sounding phonemes. Something that surprises me
@@ -535,7 +556,7 @@ def annotate(row, ax):
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
 fig = ax1.get_figure()
-fig.savefig("p2vm.png")
+fig.savefig("figures/p2vm_asr.png")
    #+end_src
 
 ** Dict
@@ -558,10 +579,14 @@ train_mixed_p2vm[0]
 
 Now I can train the embedding:
 
+  #+begin_src python
+p2vm = Word2Vec.load("models/p2vm_dict.model")
+  #+end_src
+
   #+begin_src python :results silent
 EMB_DIM = 20
 p2vm = Word2Vec(
-    negative=20,
+    negative=30,
     sentences=train_mixed_p2vm,
     size=EMB_DIM,
     window=2,
@@ -569,6 +594,7 @@ p2vm = Word2Vec(
     iter=10,
     workers=multiprocessing.cpu_count(),
 )
+p2vm.save("models/p2vm_dict.model")
   #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -584,7 +610,7 @@ based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.08464153 | 0.41159308 | 0.4019573 | 0.23694985 |
+  | 0.2336486 | 0.41370505 | 0.47227412 | 0.30347314 |
 
 These are the similarity scores for phonemes I expect to be
 dissimilar, based on intuition:
@@ -599,7 +625,7 @@ dissimilar, based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.07789143 | 0.14519733 | 0.39934722 | 0.53432506 |
+  | 0.14764439 | 0.18273796 | 0.4554945 | 0.48987275 |
 
 It looks like the model gives similar scores to similar sounding
 phonemes and dissimilar sounding phonemes. Something that surprises me
@@ -640,7 +666,7 @@ def annotate(row, ax):
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
 fig = ax1.get_figure()
-fig.savefig("p2vm_dict.png")
+fig.savefig("figures/p2vm_dict.png")
    #+end_src
 
 ** Dict_pad
@@ -663,10 +689,14 @@ train_mixed_p2vm[0]
 
 Now I can train the embedding:
 
+  #+begin_src python
+p2vm = Word2Vec.load("models/p2vm_dict_pad.model")
+  #+end_src
+
   #+begin_src python :results silent
 EMB_DIM = 20
 p2vm = Word2Vec(
-    negative=20,
+    negative=30,
     sentences=train_mixed_p2vm,
     size=EMB_DIM,
     window=2,
@@ -674,6 +704,7 @@ p2vm = Word2Vec(
     iter=10,
     workers=multiprocessing.cpu_count(),
 )
+p2vm.save("models/p2vm_dict_pad.model")
   #+end_src
 
 These are the similarity scores for phonemes I expect to be similar,
@@ -689,7 +720,7 @@ based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.20401978 | 0.37241453 | 0.43097487 | 0.29104888 |
+  | 0.21737549 | 0.42717785 | 0.41636568 | 0.38868156 |
 
 These are the similarity scores for phonemes I expect to be
 dissimilar, based on intuition:
@@ -704,7 +735,7 @@ dissimilar, based on intuition:
   #+end_src
 
   #+RESULTS:
-  | 0.17852728 | 0.094824955 | 0.39766473 | 0.5215627 |
+  | 0.11504649 | 0.1797012 | 0.36657834 | 0.51769096 |
 
 It looks like the model gives similar scores to similar sounding
 phonemes and dissimilar sounding phonemes. Something that surprises me
@@ -745,7 +776,7 @@ def annotate(row, ax):
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
 fig = ax1.get_figure()
-fig.savefig("p2vm_dict_pad.png")
+fig.savefig("figures/p2vm_dict_pad.png")
    #+end_src
 
 * p2va
