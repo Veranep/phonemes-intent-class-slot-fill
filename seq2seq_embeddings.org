@@ -126,6 +126,8 @@ train_ref[0]
   | hh | aw | s | pad | ah | v | pad | d | eh | r | ey | ax | n | pad | b | ih | k | ey | m | pad | n | ow | n | pad | th | r | uw | pad | b | ey | ax | n | s | pad | ae | n | d | pad | w | ih | ch | pad | ah | v | pad | b | ey | ax | n | s | pad | ax | s | pad | r | eh | l | ax | t | ih | v | z |
 
 ** Dict
+First I load in the dictionary data, which is already represented as phonemes:
+
   #+begin_src python
 with open("data/cmu_lst1.pkl", "rb") as infile:
     lst1 = pickle.load(infile)
@@ -140,8 +142,7 @@ with open("data/cmu_lst2.pkl", "rb") as infile:
   | S | EH | M | IY | K | OW | L | AH | N |
   | S | EH | M | IH | K | OW | L | AH | N |
 
-To better match the SQuAD and Subj datasets, I add a 'pad' padding
-symbol at the end of each word and I lowercase the phonemes:
+To better match the SQuAD and Subj datasets, I lowercase the phonemes:
 
   #+begin_src python
 for i in range(len(lst1)):
@@ -154,6 +155,11 @@ for i in range(len(lst1)):
   #+RESULTS:
   | s | eh | m | iy | k | ow | l | ah | n |
   | s | eh | m | ih | k | ow | l | ah | n |
+
+I am also going to experiment with adding 'pad' padding symbol at the
+end of each word, since I did that for the SQuAD and Subj datasets. I
+am interested to see how this will affect the performance of the
+phoneme embeddings.
 
   #+begin_src python
 lst1_pad = copy.deepcopy(lst1)
@@ -169,10 +175,13 @@ for i in range(len(lst1_pad)):
   | s | eh | m | iy | k | ow | l | ah | n | pad |
   | s | eh | m | ih | k | ow | l | ah | n | pad |
 
-Now the Dict data is ready to use for training phoneme embeddings!
+Now the non-padded and padded Dict data is ready to use for training
+phoneme embeddings!
 
 * s2s
 ** Functions / Classes
+The code used for training the seq2seq model was adapted from [[https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html][PyTorch]].
+
    #+begin_src python
 SOS_token = 0
 EOS_token = 1
@@ -362,13 +371,16 @@ def annotate(row, ax):
    #+end_src
 
 ** SQuAD and Subj
-Code from https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html.
+I first define the max length of a sentence, which also sets the
+length for the encoder outputs.
 
   #+begin_src python :results silent
 MAX_LENGTH = max(
     max(map(lambda x: len(x), train_ref)), max(map(lambda x: len(x), train_asr))
 ) + 1
   #+end_src
+
+This function that builds up a language:
 
   #+begin_src python :results silent
 def readLangs(lang1, lang2):
@@ -377,6 +389,8 @@ def readLangs(lang1, lang2):
     output_lang = Lang(lang2)
     return input_lang, output_lang, pairs
   #+end_src
+
+Is used to build up the input (REF) and output (ASR) languages:
 
   #+begin_src python
 input_lang, output_lang, pairs = readLangs("ref", "asr")
@@ -390,7 +404,7 @@ for pair in pairs:
   #+RESULTS:
   | ref | 43 | asr | 43 |
 
-So far, trained 3 * 75000 times.
+So far, this model has been trained for 3 * 75000 iterations.
 
   #+begin_src python :results silent
 hidden_size = 20
@@ -417,6 +431,9 @@ with open("decoder_asr.pkl", "wb") as output_file:
   #+end_src
 
 *** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself:
+
    #+begin_src python
 phonemes = list(input_lang.phoneme2index.keys())
 X = decoder1.embedding(torch.LongTensor(np.arange(2, 43)))
@@ -430,6 +447,8 @@ np.save("models/s2s_asr.npy", X)
    | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | l | t | z | aa | f | ao | er | p | sh | ng | ay | uh | y | iy | g | dh | jh | oy | zh |
    | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |   |   |   |    |   |    |    |   |    |    |    |    |   |    |   |    |    |    |    |
 
+Now I can fit the t-SNE and put the results in a DataFrame:
+
    #+begin_src python
 tsne = TSNE(n_components=2)
 X_tsne = tsne.fit_transform(X)
@@ -441,6 +460,8 @@ df.shape
    #+RESULTS:
    | 41 | 2 |
 
+Now the t-SNE can be plotted:
+
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
@@ -449,13 +470,16 @@ fig.savefig("figures/s2s_asr.png")
    #+end_src
 
 ** Dict
-Code from https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html.
+I first define the max length of a sentence, which also sets the
+length for the encoder outputs.
 
   #+begin_src python :results silent
 MAX_LENGTH = max(
     max(map(lambda x: len(x), lst1)), max(map(lambda x: len(x), lst2))
 ) + 1
   #+end_src
+
+This function that builds up a language:
 
   #+begin_src python :results silent
 def readLangs(lang1, lang2):
@@ -464,6 +488,8 @@ def readLangs(lang1, lang2):
     output_lang = Lang(lang2)
     return input_lang, output_lang, pairs
   #+end_src
+
+Is used to build up the input (lst1) and output (lst2) languages:
 
   #+begin_src python
 input_lang, output_lang, pairs = readLangs("lst1", "lst2")
@@ -477,7 +503,7 @@ for pair in pairs:
   #+RESULTS:
   | lst1 | 41 | lst2 | 41 |
 
-So far, trained 3 * 75000 times.
+So far, this model has been trained for 3 * 75000 iterations.
 
   #+begin_src python :results silent
 hidden_size = 20
@@ -504,6 +530,11 @@ with open("decoder_dict.pkl", "wb") as output_file:
   #+end_src
 
 *** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
+
    #+begin_src python
 phonemes = list(input_lang.phoneme2index.keys())
 X = decoder1.embedding(torch.LongTensor(np.arange(2, 41)))
@@ -518,6 +549,8 @@ np.save("models/s2s_dict.npy", X)
    |  s | eh | m | iy | k | ow | l | ah | n | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
    | 39 | 20 |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
 
+Now I can fit the t-SNE and put the results in a DataFrame:
+
    #+begin_src python
 tsne = TSNE(n_components=2)
 X_tsne = tsne.fit_transform(X)
@@ -529,6 +562,8 @@ df.shape
    #+RESULTS:
    | 39 | 2 |
 
+Now the t-SNE can be plotted:
+
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
@@ -537,13 +572,16 @@ fig.savefig("figures/s2s_dict.png")
    #+end_src
 
 ** Dict_pad
-Code from https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html.
+I first define the max length of a sentence, which also sets the
+length for the encoder outputs.
 
   #+begin_src python :results silent
 MAX_LENGTH = max(
     max(map(lambda x: len(x), lst1_pad)), max(map(lambda x: len(x), lst2_pad))
 ) + 1
   #+end_src
+
+This function that builds up a language:
 
   #+begin_src python :results silent
 def readLangs(lang1, lang2):
@@ -552,6 +590,8 @@ def readLangs(lang1, lang2):
     output_lang = Lang(lang2)
     return input_lang, output_lang, pairs
   #+end_src
+
+Is used to build up the input (lst1_pad) and output (lst2_pad) languages:
 
   #+begin_src python
 input_lang, output_lang, pairs = readLangs("lst1_pad", "lst2_pad")
@@ -565,7 +605,7 @@ for pair in pairs:
   #+RESULTS:
   | lst1_pad | 42 | lst2_pad | 42 |
 
-So far, trained 3 * 75000 times.
+So far, this model has been trained for 3 * 75000 iterations.
 
   #+begin_src python :results silent
 hidden_size = 20
@@ -592,6 +632,11 @@ with open("decoder_dict_pad.pkl", "wb") as output_file:
   #+end_src
 
 *** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
+
    #+begin_src python
 phonemes = list(input_lang.phoneme2index.keys())
 X = decoder1.embedding(torch.LongTensor(np.arange(2, 42)))
@@ -606,6 +651,8 @@ np.save("models/s2s_dict_pad.npy", X)
    |  s | eh | m | iy | k | ow | l | ah | n | pad | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
    | 40 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
 
+Now I can fit the t-SNE and put the results in a DataFrame:
+
    #+begin_src python
 tsne = TSNE(n_components=2)
 X_tsne = tsne.fit_transform(X)
@@ -616,6 +663,8 @@ df.shape
 
    #+RESULTS:
    | 40 | 2 |
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")

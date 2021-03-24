@@ -118,6 +118,8 @@ train_ref[0]
   | hh | aw | s | pad | ah | v | pad | d | eh | r | ey | ax | n | pad | b | ih | k | ey | m | pad | n | ow | n | pad | th | r | uw | pad | b | ey | ax | n | s | pad | ae | n | d | pad | w | ih | ch | pad | ah | v | pad | b | ey | ax | n | s | pad | ax | s | pad | r | eh | l | ax | t | ih | v | z |
 
 ** Dict
+First I load in the dictionary data, which is already represented as phonemes:
+
   #+begin_src python
 with open("data/cmu_lst1.pkl", "rb") as infile:
     lst1 = pickle.load(infile)
@@ -132,8 +134,7 @@ with open("data/cmu_lst2.pkl", "rb") as infile:
   | S | EH | M | IY | K | OW | L | AH | N |
   | S | EH | M | IH | K | OW | L | AH | N |
 
-To better match the SQuAD and Subj datasets, I add a 'pad' padding
-symbol at the end of each word and I lowercase the phonemes:
+To better match the SQuAD and Subj datasets, I lowercase the phonemes:
 
   #+begin_src python
 for i in range(len(lst1)):
@@ -146,6 +147,11 @@ for i in range(len(lst1)):
   #+RESULTS:
   | s | eh | m | iy | k | ow | l | ah | n |
   | s | eh | m | ih | k | ow | l | ah | n |
+
+I am also going to experiment with adding 'pad' padding symbol at the
+end of each word, since I did that for the SQuAD and Subj datasets. I
+am interested to see how this will affect the performance of the
+phoneme embeddings.
 
   #+begin_src python
 lst1_pad = copy.deepcopy(lst1)
@@ -161,7 +167,8 @@ for i in range(len(lst1_pad)):
   | s | eh | m | iy | k | ow | l | ah | n | pad |
   | s | eh | m | ih | k | ow | l | ah | n | pad |
 
-Now the Dict data is ready to use for training phoneme embeddings!
+Now the non-padded and padded Dict data is ready to use for training
+phoneme embeddings!
 
 * p2vc
 ** SQuAD and Subj
@@ -221,6 +228,9 @@ It looks like the model gives somewhat higher scores to similar
 sounding phonemes, but the difference is not very big.
 
 *** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself:
+
    #+begin_src python
 phonemes = list(p2vc.wv.vocab)
 X = p2vc[phonemes]
@@ -231,6 +241,8 @@ X = p2vc[phonemes]
    #+RESULTS:
    | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | l | t | z | aa | f | ao | er | p | sh | ng | ay | uh | y | iy | g | dh | jh | oy | zh |
    | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |   |   |   |    |   |    |    |   |    |    |    |    |   |    |   |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -248,6 +260,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -315,8 +329,10 @@ sounding phonemes, but the difference is not very big, except for "hh"
 and "oy".
 
 *** Visualization
-The Dict data has one less phoneme compared to the phonemized SQuAD
-and Subj data, namely the 'ax' phoneme:
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
 
    #+begin_src python
 phonemes = list(p2vc.wv.vocab)
@@ -328,6 +344,8 @@ X = p2vc[phonemes]
    #+RESULTS:
    |  s | eh | m | iy | k | ow | l | ah | n | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
    | 39 | 20 |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -345,6 +363,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -411,8 +431,10 @@ sounding phonemes, but the difference is not very big, except for "hh"
 and "oy".
 
 *** Visualization
-The Dict data has one less phoneme compared to the phonemized SQuAD
-and Subj data, namely the 'ax' phoneme:
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
 
    #+begin_src python
 phonemes = list(p2vc.wv.vocab)
@@ -424,6 +446,8 @@ X = p2vc[phonemes]
    #+RESULTS:
    |  s | eh | m | iy | k | ow | l | ah | n | pad | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
    | 40 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -441,6 +465,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -524,6 +550,9 @@ phonemes and dissimilar sounding phonemes. Something that surprises me
 is the very low score for "ey" and "ay", even though they are similar
 sounding phonemes.
 *** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself:
+
    #+begin_src python
 phonemes = list(p2vm.wv.vocab)
 X = p2vm[phonemes]
@@ -534,6 +563,8 @@ X = p2vm[phonemes]
    #+RESULTS:
    | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | aa | l | t | z | f | ao | er | p | sh | ay | ng | uh | y | dh | iy | g | jh | oy | zh |
    | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |    |   |   |   |   |    |    |   |    |    |    |    |   |    |    |   |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -551,6 +582,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -634,6 +667,11 @@ sounding phonemes. The high score for "w" and "l" is also surprising,
 because I do not expect them to sound similar.
 
 *** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
+
    #+begin_src python
 phonemes = list(p2vm.wv.vocab)
 X = p2vm[phonemes]
@@ -644,6 +682,8 @@ X = p2vm[phonemes]
    #+RESULTS:
    |  s | eh | m | iy | ih | k | ow | l | ah | n | ey | aa | r | z | b | ae | uw | aw | d | t | ng | sh | er | y | ao | v | p | ch | uh | g | th | w | ay | jh | hh | f | oy | dh | zh |
    | 39 | 20 |   |    |    |   |    |   |    |   |    |    |   |   |   |    |    |    |   |   |    |    |    |   |    |   |   |    |    |   |    |   |    |    |    |   |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -661,6 +701,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -744,6 +786,11 @@ sounding phonemes. The high score for "w" and "l" is also surprising,
 because I do not expect them to sound similar.
 
 *** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
+
    #+begin_src python
 phonemes = list(p2vm.wv.vocab)
 X = p2vm[phonemes]
@@ -754,6 +801,8 @@ X = p2vm[phonemes]
    #+RESULTS:
    |  s | eh | m | iy | ih | k | ow | l | ah | n | pad | ey | aa | r | z | b | ae | uw | aw | d | t | ng | sh | er | y | ao | v | p | ch | uh | g | th | w | ay | jh | hh | f | oy | dh | zh |
    | 40 | 20 |   |    |    |   |    |   |    |   |     |    |    |   |   |   |    |    |    |   |   |    |    |    |   |    |   |   |    |    |   |    |   |    |    |    |   |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -771,6 +820,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -914,7 +965,7 @@ This looks ready to use for the training of a phoneme embedding!
 
 ** SQuAD and Subj
 *** Embedding
-Now I can train the embedding:
+I first initialize the model:
 
   #+begin_src python :results silent
 EMB_DIM = 20
@@ -928,9 +979,14 @@ p2va = Word2Vec(
 )
   #+end_src
 
+Then set the context window:
+
   #+begin_src python :results silent
 context_window = 0
   #+end_src
+
+Now I align phonemized sentences and create lists of individual
+phonemes and their contexts for training:
 
   #+begin_src python
 train_aligned_p2va = []
@@ -972,6 +1028,8 @@ for i in range(len(train_ref)):
 
   #+RESULTS:
 
+Before training I need to add the vocabulary to the Word2Vec model:
+
   #+begin_src python
 start = len(p2va.wv.vocab)
 p2va.build_vocab(train_ref + train_asr)
@@ -981,6 +1039,8 @@ end = len(p2va.wv.vocab)
 
   #+RESULTS:
   | 0 | 41 |
+
+Now the model can be trained and saved:
 
   #+begin_src python :results silent
 for sentence in tqdm.tqdm(train_aligned_p2va):
@@ -1038,6 +1098,9 @@ dissimilar, based on intuition:
   | 0.55439144 | 0.83803666 | 0.79349804 | 0.80255985 |
 
 **** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself:
+
    #+begin_src python
 phonemes = list(p2va_2.wv.vocab)
 X = p2va_2[phonemes]
@@ -1048,6 +1111,8 @@ X = p2va_2[phonemes]
    #+RESULTS:
    | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | l | t | z | aa | f | ao | er | p | sh | ng | ay | uh | y | iy | g | dh | jh | oy | zh |
    | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |   |   |   |    |   |    |    |   |    |    |    |    |   |    |   |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -1065,6 +1130,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -1111,6 +1178,9 @@ dissimilar, based on intuition:
   | 0.14004605 | -0.22204834 | -0.25583318 | 0.30523828 |
 
 **** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself:
+
    #+begin_src python
 phonemes = list(p2va_0.wv.vocab)
 X = p2va_0[phonemes]
@@ -1121,6 +1191,8 @@ X = p2va_0[phonemes]
    #+RESULTS:
    | hh | aw | s | pad | ah | v | d | eh | r | ey | ax | n | b | ih | k | m | ow | th | uw | ae | w | ch | l | t | z | aa | f | ao | er | p | sh | ng | ay | uh | y | iy | g | dh | jh | oy | zh |
    | 41 | 20 |   |     |    |   |   |    |   |    |    |   |   |    |   |   |    |    |    |    |   |    |   |   |   |    |   |    |    |   |    |    |    |    |   |    |   |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -1139,6 +1211,8 @@ def annotate(row, ax):
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
 
+Now the t-SNE can be plotted:
+
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
@@ -1148,7 +1222,7 @@ fig.savefig("p2va_0.png")
 
 ** Dict
 *** Embedding
-Now I can train the embedding:
+I first initialize the model:
 
   #+begin_src python :results silent
 EMB_DIM = 20
@@ -1162,9 +1236,14 @@ p2va = Word2Vec(
 )
   #+end_src
 
+Then set the context window:
+
   #+begin_src python :results silent
 context_window = 0
   #+end_src
+
+Now I align phonemized sentences and create lists of individual
+phonemes and their contexts for training:
 
   #+begin_src python
 train_aligned_p2va = []
@@ -1210,6 +1289,8 @@ for i in range(len(lst1)):
   | iy | (ih) |   |    |   |
   | ih | (iy) |   |    |   |
 
+Before training I need to add the vocabulary to the Word2Vec model:
+
   #+begin_src python
 start = len(p2va.wv.vocab)
 p2va.build_vocab([["pad", "pad", "pad", "pad", "pad"]] + lst1 + lst2)
@@ -1219,6 +1300,8 @@ end = len(p2va.wv.vocab)
 
   #+RESULTS:
   | 0 | 40 |
+
+Now the model can be trained and saved:
 
   #+begin_src python :results silent
 for sentence in tqdm.tqdm(train_aligned_p2va):
@@ -1275,6 +1358,11 @@ dissimilar, based on intuition:
   | 0.79544413 | 0.7986341 | 0.84386724 | 0.82617694 |
 
 **** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
+
    #+begin_src python
 phonemes = list(p2va_2.wv.vocab)
 X = p2va_2[phonemes]
@@ -1285,6 +1373,8 @@ X = p2va_2[phonemes]
    #+RESULTS:
    | pad |  s | eh | m | iy | k | ow | l | ah | n | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
    |  40 | 20 |    |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -1302,6 +1392,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -1346,6 +1438,11 @@ dissimilar, based on intuition:
   | 0.735503 | 0.7481821 | 0.6242971 | 0.505862 |
 
 **** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
+
    #+begin_src python
 phonemes = list(p2va_0.wv.vocab)
 X = p2va_0[phonemes]
@@ -1356,6 +1453,8 @@ X = p2va_0[phonemes]
    #+RESULTS:
    | pad |  s | eh | m | iy | k | ow | l | ah | n | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
    |  40 | 20 |    |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -1374,6 +1473,8 @@ def annotate(row, ax):
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
 
+Now the t-SNE can be plotted:
+
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
 df.apply(annotate, ax=ax1, axis=1)
@@ -1383,7 +1484,7 @@ fig.savefig("p2va_0_dict.png")
 
 ** Dict_pad
 *** Embedding
-Now I can train the embedding:
+I first initialize the model:
 
   #+begin_src python :results silent
 EMB_DIM = 20
@@ -1397,9 +1498,14 @@ p2va = Word2Vec(
 )
   #+end_src
 
+Then set the context window:
+
   #+begin_src python :results silent
 context_window = 2
   #+end_src
+
+Now I align phonemized sentences and create lists of individual
+phonemes and their contexts for training:
 
   #+begin_src python
 train_aligned_p2va = []
@@ -1445,6 +1551,8 @@ for i in range(len(lst1)):
   | iy | (eh m ih k ow) |   |    |   |    |   |    |   |     |
   | ih | (eh m iy k ow) |   |    |   |    |   |    |   |     |
 
+Before training I need to add the vocabulary to the Word2Vec model:
+
   #+begin_src python
 start = len(p2va.wv.vocab)
 p2va.build_vocab(lst1_pad + lst2_pad)
@@ -1454,6 +1562,8 @@ end = len(p2va.wv.vocab)
 
   #+RESULTS:
   | 0 | 40 |
+
+Now the model can be trained and saved:
 
   #+begin_src python :results silent
 for sentence in tqdm.tqdm(train_aligned_p2va):
@@ -1510,6 +1620,11 @@ dissimilar, based on intuition:
   | 0.7381566 | 0.8203041 | 0.83652234 | 0.85238844 |
 
 **** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
+
    #+begin_src python
 phonemes = list(p2va_2.wv.vocab)
 X = p2va_2[phonemes]
@@ -1520,6 +1635,8 @@ X = p2va_2[phonemes]
    #+RESULTS:
    |  s | eh | m | iy | k | ow | l | ah | n | pad | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
    | 40 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -1537,6 +1654,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
@@ -1581,6 +1700,11 @@ dissimilar, based on intuition:
   | 0.6647972 | 0.7729586 | 0.6467948 | 0.6428419 |
 
 **** Visualization
+To create a t-SNE plot, I need all the phonemes included in the
+embedding, as well as the embedding itself. The Dict data has one less
+phoneme compared to the phonemized SQuAD and Subj data, namely the
+'ax' phoneme:
+
    #+begin_src python
 phonemes = list(p2va_0.wv.vocab)
 X = p2va_0[phonemes]
@@ -1591,6 +1715,8 @@ X = p2va_0[phonemes]
    #+RESULTS:
    |  s | eh | m | iy | k | ow | l | ah | n | pad | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
    | 40 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+
+Now I can fit the t-SNE and put the results in a DataFrame:
 
    #+begin_src python
 tsne = TSNE(n_components=2)
@@ -1608,6 +1734,8 @@ def annotate(row, ax):
     ax.annotate(row.name, (row.x, row.y),
                 xytext=(10, -5), textcoords='offset points')
    #+end_src
+
+Now the t-SNE can be plotted:
 
    #+begin_src python :results silent
 ax1 = df.plot.scatter(x="x", y="y")
