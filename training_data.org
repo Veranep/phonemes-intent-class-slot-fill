@@ -245,9 +245,7 @@ for comb in combs:
           add1[i] = add1[i][:-1]
 
   for j in range(len(add2)):
-      #Remove digits added to the end of the phoneme with open("data/cmu_dict.txt", "r", encoding="ISO-8859-1") as infile:
-    cmu_dict = [i.strip() for i in infile.readlines()]
-to express stress
+      #Remove digits added to the end of the phoneme to express stress
       if add2[j][-1].isdigit():
           add2[j] = add2[j][:-1]
 
