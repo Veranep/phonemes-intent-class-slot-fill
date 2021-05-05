@@ -182,7 +182,7 @@ phoneme embeddings!
 ** Functions / Classes
 The code used for training the seq2seq model was adapted from [[https://pytorch.org/tutorials/intermediate/seq2seq_translation_tutorial.html][PyTorch]].
 
-   #+begin_src python
+   #+begin_src python :results silent
 SOS_token = 0
 EOS_token = 1
 
@@ -436,6 +436,10 @@ embedding, as well as the embedding itself:
 
    #+begin_src python
 phonemes = list(input_lang.phoneme2index.keys())
+vocab = dict([(x,y) for (y,x) in enumerate(phonemes)])
+vocab_dict = {"vocab": vocab, "rev": phonemes}
+with open("models/s2s_asr_vocab.pkl", "wb") as outfile:
+    pickle.dump(vocab_dict, outfile)
 X = decoder1.embedding(torch.LongTensor(np.arange(2, 43)))
 #To create a numpy array out of the tensor:
 X = X.detach().numpy()
@@ -537,9 +541,15 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
 
    #+begin_src python
 phonemes = list(input_lang.phoneme2index.keys())
+vocab = dict([(x,y) for (y,x) in enumerate(phonemes + ["ax"])])
+vocab_dict = {"vocab": vocab, "rev": phonemes + ["ax"]}
+with open("models/s2s_dict_vocab.pkl", "wb") as outfile:
+    pickle.dump(vocab_dict, outfile)
 X = decoder1.embedding(torch.LongTensor(np.arange(2, 41)))
 #To create a numpy array out of the tensor:
 X = X.detach().numpy()
+idx = phonemes.index("k")
+X = np.concatenate([X, X[idx].reshape((1, 20))])
 np.save("models/s2s_dict.npy", X)
 
 (phonemes, X.shape)
@@ -547,7 +557,7 @@ np.save("models/s2s_dict.npy", X)
 
    #+RESULTS:
    |  s | eh | m | iy | k | ow | l | ah | n | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
-   | 39 | 20 |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+   | 40 | 20 |   |    |   |    |   |    |   |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
 
 Now I can fit the t-SNE and put the results in a DataFrame:
 
@@ -639,9 +649,15 @@ phoneme compared to the phonemized SQuAD and Subj data, namely the
 
    #+begin_src python
 phonemes = list(input_lang.phoneme2index.keys())
+vocab = dict([(x,y) for (y,x) in enumerate(phonemes + ["ax"])])
+vocab_dict = {"vocab": vocab, "rev": phonemes + ["ax"]}
+with open("models/s2s_dict_pad_vocab.pkl", "wb") as outfile:
+    pickle.dump(vocab_dict, outfile)
 X = decoder1.embedding(torch.LongTensor(np.arange(2, 42)))
 #To create a numpy array out of the tensor:
 X = X.detach().numpy()
+idx = phonemes.index("k")
+X = np.concatenate([X, X[idx].reshape((1, 20))])
 np.save("models/s2s_dict_pad.npy", X)
 
 (phonemes, X.shape)
@@ -649,7 +665,7 @@ np.save("models/s2s_dict_pad.npy", X)
 
    #+RESULTS:
    |  s | eh | m | iy | k | ow | l | ah | n | pad | r | z | b | aa | ae | uw | d | t | ih | ng | sh | er | y | ey | ao | v | p | ch | g | aw | w | ay | jh | hh | f | th | uh | oy | dh | zh |
-   | 40 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
+   | 41 | 20 |   |    |   |    |   |    |   |     |   |   |   |    |    |    |   |   |    |    |    |    |   |    |    |   |   |    |   |    |   |    |    |    |   |    |    |    |    |    |
 
 Now I can fit the t-SNE and put the results in a DataFrame:
 
