@@ -14,6 +14,65 @@ python main.py --file ../phonemes-intent-class/data/atis/train/seq.in --level 2
 
 The level stands for the amount of noise added by the ASR error injection pipeline.
 
+Before phonemizing the sequences, I first replace all special
+characters, so they do not pose a problem for the phonemizer:
+
+#+begin_src python
+special_characters = {
+    "á": "a",
+    "à": "a",
+    "ó": "o",
+    "é": "e",
+    "í": "i",
+    "ú": "u",
+    "ū": "u",
+    "ñ": "n",
+    "~": "-",
+    "–": "-",
+    "’": "'",
+    "æ": "ae",
+    "ð": "o",
+    "ō": "o",
+    "ø": "o",
+    "ê": "e",
+    "ö": "o",
+    "ô": "o",
+    "â": "a",
+    "ä": "a",
+    "ã": "a",
+    "ë": "e",
+    "è": "e",
+    "ç": "s",
+    "û": "u",
+}
+
+for dataset in [
+    "atis/train",
+    "atis/test",
+    "atis/valid",
+]:
+
+    with open(f"data/{dataset}/seq_ref.in", "r") as infile:
+        ref_sequences = [i.strip() for i in infile.readlines()]
+
+    with open(f"data/{dataset}/seq_asr.in", "r") as infile:
+        asr_sequences = [i.strip() for i in infile.readlines()]
+
+    for key in special_characters.keys():
+        ref_sequences = list(
+            map(lambda st: str.replace(st, key, special_characters[key]), ref_sequences)
+        )
+        asr_sequences = list(
+            map(lambda st: str.replace(st, key, special_characters[key]), asr_sequences)
+        )
+
+    with open(f"data/{dataset}/seq_ref.in", "w") as outfile:
+        outfile.write("\n".join(ref_sequences))
+
+    with open(f"data/{dataset}/seq_asr.in", "w") as outfile:
+        outfile.write("\n".join(asr_sequences))
+#+end_src
+
   #+begin_src bash
 phonemize seq.in -o seq_in.phon -l en-us -b festival -w ' ' -p '|'
   #+end_src
@@ -176,6 +235,68 @@ First I created ASR errors in the text sequences:
   #+begin_src bash
 python main.py --file ../phonemes-intent-class/data/snips/train/seq.in --level 2
   #+end_src
+
+Before phonemizing the sequences, I first replace all special
+characters, so they do not pose a problem for the phonemizer:
+
+#+begin_src python
+special_characters = {
+    "á": "a",
+    "à": "a",
+    "ó": "o",
+    "é": "e",
+    "í": "i",
+    "ú": "u",
+    "ū": "u",
+    "ñ": "n",
+    "~": "-",
+    "–": "-",
+    "’": "'",
+    "æ": "ae",
+    "ð": "o",
+    "ō": "o",
+    "ø": "o",
+    "ê": "e",
+    "ö": "o",
+    "ô": "o",
+    "â": "a",
+    "ä": "a",
+    "ã": "a",
+    "ë": "e",
+    "è": "e",
+    "ç": "s",
+    "û": "u",
+}
+
+for dataset in [
+    "snips/train",
+    "snips/test",
+    "snips/valid",
+]:
+
+    with open(f"data/{dataset}/seq_ref.in", "r") as infile:
+        ref_sequences = [i.strip() for i in infile.readlines()]
+
+    with open(f"data/{dataset}/seq_asr.in", "r") as infile:
+        asr_sequences = [i.strip() for i in infile.readlines()]
+
+    for key in special_characters.keys():
+        ref_sequences = list(
+            map(lambda st: str.replace(st, key, special_characters[key]), ref_sequences)
+        )
+        asr_sequences = list(
+            map(lambda st: str.replace(st, key, special_characters[key]), asr_sequences)
+        )
+
+    with open(f"data/{dataset}/seq_ref.in", "w") as outfile:
+        outfile.write("\n".join(ref_sequences))
+
+    with open(f"data/{dataset}/seq_asr.in", "w") as outfile:
+        outfile.write("\n".join(asr_sequences))
+#+end_src
+
+#+RESULTS:
+: 33598
 
 The level stands for the amount of noise added by the ASR error injection pipeline.
 
